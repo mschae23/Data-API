@@ -1,0 +1,40 @@
+# Java
+*.class
+*.war
+*.ear
+hs_err_pid*
+
+# IntelliJ IDEA
+.idea/
+.bsp/
+*.ipr
+*.iws
+*.iml
+
+# Eclipse
+.classpath
+.project
+.metadata/
+bin/
+*.tmp
+*.bak
+*.swp
+*~.nib
+.settings/
+.loadpath
+.externalToolBuilders/
+*.launch
+
+# VS Code
+.vscode/
+.metals/
+.bloop/
+metals.sbt
+
+# sbt
+target/
+project/target/
+
+# OS specific
+.DS_Store
+Thumbs.db
