@@ -1,5 +1,7 @@
 package de.martenschaefer.serialization
 
+import de.martenschaefer.serialization.util.Either
+
 object TestMain {
     def main(args: Array[String]): Unit = {
         case class Test(val test1: String, test2: Int)
@@ -33,10 +35,15 @@ object TestMain {
         val testInput =
             """
               some.testValue = true
-              some.testObject.test1=Lalalala
-              some.testObject.test2=123456789
+              some.testObject.test1 = Lalala
+              some.testObject.test2 = 3
               """.stripMargin
 
-        println(test3Codec.decode(testInput))
+        val decoded = test3Codec.decode(testInput)
+
+        decoded match {
+            case Either.Right(value) => println(value)
+            case Either.Left(errors) => for (error <- errors) println(error)
+        }
     }
 }

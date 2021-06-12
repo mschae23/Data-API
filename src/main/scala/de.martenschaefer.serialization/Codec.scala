@@ -3,6 +3,9 @@ package de.martenschaefer.serialization
 import scala.collection.mutable.{ Buffer, ListBuffer }
 import cats._
 import cats.data._
+import de.martenschaefer.serialization.Element._
+import de.martenschaefer.serialization.ElementError._
+import de.martenschaefer.serialization.codec.{ ArrayCodec, EitherCodec, OptionCodec }
 import de.martenschaefer.serialization.util.Either
 import de.martenschaefer.serialization.util.Either._
 
@@ -63,10 +66,10 @@ object Codec {
                     codec.decodeElement(element).map(to)
             }
 
-    def record[T](builder: Buffer[FieldCodec[_, T]] ?=> (Buffer[FieldCodec[_, T]], (Map[String, _] ?=> T))): Codec[T] = {
+    def record[T](builder: Buffer[FieldCodec[_, T]] ?=> (Buffer[FieldCodec[_, T]], ((FieldCodec[_, T] => _) ?=> T))): Codec[T] = {
         val buildTuple = builder(using ListBuffer[FieldCodec[_, T]]())
         val fields = buildTuple._1.toList
-        val creator: Map[String, _] ?=> T = buildTuple._2
+        val creator: (FieldCodec[_, T] => _) ?=> T = buildTuple._2
 
         new Codec[T] {
             def encodeElement(value: T): Element =
@@ -88,7 +91,9 @@ object Codec {
                             }
 
                         if (errors.isEmpty)
-                            Right(creator(using valueDecodedMap.map((name, decoded) => (name, decoded.getRight))))
+                            val map = valueDecodedMap.map((name, decoded) => (name, decoded.getRight))
+                            Right(creator(using fieldCodec => map.get(fieldCodec.fieldName).getOrElse(
+                                return Left(Vector(KeyNotFound(fieldCodec.fieldName, element, List()))))))
                         else
                             Left(errors)
                     }
@@ -98,7 +103,7 @@ object Codec {
         }
     }
 
-    def build[T](builder: Map[String, _] ?=> T)(using fields: Buffer[FieldCodec[_, T]]): (Buffer[FieldCodec[_, T]], Map[String, _] ?=> T) =
+    def build[T](builder: (FieldCodec[_, T] => _) ?=> T)(using fields: Buffer[FieldCodec[_, T]]): (Buffer[FieldCodec[_, T]], (FieldCodec[_, T] => _) ?=> T) =
         (fields, builder)
 
     given Codec[Int] with {
@@ -125,7 +130,7 @@ object Codec {
             }
     }
 
-    given Codec[Float] with{
+    given Codec[Float] with {
         override def encodeElement(value: Float): Element =
             Element.FloatElement(value)
 
@@ -173,35 +178,11 @@ object Codec {
             }
     }
 
-    given [T: Codec]: Codec[Option[T]] with {
-        override def encodeElement(option: Option[T]): Element = option match {
-            case Some(value) => Codec[T].encodeElement(value)
-            case None => Element.None
-        }
+    given[T: Codec]: Codec[Option[T]] = OptionCodec[T]
 
-        override def decodeElement(element: Element): Decoded[Option[T]] =
-            element match {
-                case Element.None => Right(None)
+    given[L: Codec, R: Codec]: Codec[Either[L, R]] = EitherCodec[L, R]
 
-                case _ => Codec[T].decodeElement(element).map(Some(_))
-            }
-    }
-
-    given [L: Codec, R: Codec]: Codec[Either[L, R]] with {
-        override def encodeElement(option: Either[L, R]): Element = option match {
-            case Left(value) => Codec[L].encodeElement(value)
-            case Right(value) => Codec[R].encodeElement(value)
-        }
-
-        override def decodeElement(element: Element): Decoded[Either[L, R]] =
-            Codec[L].decodeElement(element) match {
-                case Right(value) => Right(Left(value))
-                case Left(errors) => Codec[R].decodeElement(element) match {
-                    case Right(value) => Right(Right(value))
-                    case Left(errors2) => Left(Vector(ElementError.Neither(element, List())))
-                }
-            }
-    }
+    given[T: Codec]: Codec[List[T]] = ArrayCodec[T]
 }
 
 trait IncompleteFieldCodec[T](val fieldName: String) extends Codec[T] {
@@ -236,13 +217,7 @@ trait IncompleteFieldCodec[T](val fieldName: String) extends Codec[T] {
 }
 
 trait FieldCodec[T, B](val fieldName: String, val getter: B => T) extends Codec[T] {
-    def apply(using map: Map[String, _]): T =
-        try {
-            map.get(this.fieldName).get.asInstanceOf[T]
-        } catch {
-            case e: (NoSuchElementException | ClassCastException) =>
-                throw new NoSuchElementException(e.getMessage)
-        }
+    def apply(using context: FieldCodec[_, B] => _): T = context(this).asInstanceOf[T]
 
-    def get(using map: Map[String, _]): T = apply
+    def get(using context: FieldCodec[_, B] => _): T = apply
 }

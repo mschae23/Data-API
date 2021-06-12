@@ -95,7 +95,7 @@ object PropertiesCodecs {
                                 case None => value.toBooleanOption match {
                                     case Some(booleanValue) => Element.BooleanElement(booleanValue)
                                     case None =>
-                                        if ("null".equals(value)) Element.Null
+                                        if ("null".equals(value.strip)) Element.Null
                                         else Element.StringElement(value)
                                 }
                             }
