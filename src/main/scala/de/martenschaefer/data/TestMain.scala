@@ -16,7 +16,7 @@ object TestMain {
 
     case class Test4(val some: Either[Test2, Test3])
 
-    case class Test5(val someNumber: Int, optionalConfig: Option[Test4])
+    case class Test5(val lifecycle: Lifecycle, optionalConfig: Option[Test4])
 
     given Codec[Test1] = Codec.record {
         val test1 = Codec[String].fieldOf("test_1").forGetter[Test1](_.test1)
@@ -42,10 +42,10 @@ object TestMain {
     given Codec[Test4] = Codec[Either[Test2, Test3]].fieldOf("some").xmap(Test4(_))(_.some)
 
     given Codec[Test5] = Codec.record {
-        val someNumber = Codec[Int].fieldOf("some_number").forGetter[Test5](_.someNumber)
+        val lifecycle = Codec[Lifecycle].fieldOf("lifecycle").forGetter[Test5](_.lifecycle)
         val optionalConfig = Codec[Option[Test4]].fieldOf("optional_config").forGetter[Test5](_.optionalConfig)
 
-        Codec.build(Test5(someNumber.get, optionalConfig.get))
+        Codec.build(Test5(lifecycle.get, optionalConfig.get))
     }
 
     def main(args: Array[String]): Unit = {
@@ -104,14 +104,14 @@ object TestMain {
 
         println("## Option")
 
-        val optionTestSome = Test5(11, Some(Test4(Either.Left(Test2(false, Test1("Hello!", 5))))))
-        val optionTestNone = Test5(108, scala.None)
+        val optionTestSome = Test5(Lifecycle.Stable, Some(Test4(Either.Left(Test2(false, Test1("Hello!", 5))))))
+        val optionTestNone = Test5(Lifecycle.Deprecated(6), scala.None)
 
         println(Codec[Test5].encode(optionTestSome))
         println(Codec[Test5].encode(optionTestNone))
 
         val optionTestInput1 = ObjectElement(Map(
-            "some_number" -> IntElement(99),
+            "lifecycle" -> StringElement("experimental"),
             "optional_config" -> ObjectElement(Map(
                 "some" -> ObjectElement(Map(
                     "test_object_2" -> ObjectElement(Map(
@@ -124,7 +124,9 @@ object TestMain {
         ))
 
         val optionTestInput2 = ObjectElement(Map(
-            "some_number" -> IntElement(99)
+            "lifecycle" -> ObjectElement(Map(
+                "deprecated_since" -> IntElement(2)
+            ))
         ))
 
         println(Codec[Test5].decodeElement(optionTestInput1))

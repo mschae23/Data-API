@@ -5,7 +5,7 @@ import cats._
 import cats.data._
 import de.martenschaefer.data.serialization.Element._
 import de.martenschaefer.data.serialization.ElementError._
-import de.martenschaefer.data.serialization.codec.{ ArrayCodec, EitherCodec, KeyDispatchCodec, OptionCodec, PrimitiveCodec, RecordCodec }
+import de.martenschaefer.data.serialization.codec.{ ArrayCodec, EitherCodec, KeyDispatchCodec, OptionCodec, PrimitiveCodec, RecordCodec, UnitCodec }
 import de.martenschaefer.data.util.Either._
 import de.martenschaefer.data.util.{ Either, Lifecycle }
 
@@ -57,6 +57,16 @@ trait Codec[T] {
         }
 
     def xmap[B](to: T => B)(from: B => T): Codec[B] = Invariant[Codec].imap(this)(to)(from)
+
+    def flatXmap[B](to: (T, Element) => Decoded[B])(from: B => T): Codec[B] = new Codec[B] {
+        def encodeElement(value: B): Element =
+            self.encodeElement(from(value))
+
+        def decodeElement(element: Element): Decoded[B] =
+            self.decodeElement(element).flatMap(b => to(b, element))
+
+        override val lifecycle: Lifecycle = self.lifecycle
+    }
 
     def dispatch[B](typeKey: String, valueKey: String, typeFunction: B => T, codec: T => Codec[_ <: B], lifecycle: Lifecycle): Codec[B] =
         new KeyDispatchCodec[T, B](typeKey, valueKey, b => Right(typeFunction(b)), codec, lifecycle)(using this)
@@ -119,6 +129,10 @@ object Codec {
 
     def build[T](builder: (FieldCodec[_, T] => _) ?=> T)(using fields: Buffer[FieldCodec[_, T]]): (Buffer[FieldCodec[_, T]], (FieldCodec[_, T] => _) ?=> T) =
         (fields, builder)
+
+    def unit[T](value: T) = new UnitCodec(Left(value))
+
+    def unit[T](value: () => T) = new UnitCodec(Right(value))
 
     given Codec[Int] = new PrimitiveCodec[Int, IntElement](IntElement(_),
         _.isInstanceOf[IntElement], _.value, NotAnInt(_, List()))
