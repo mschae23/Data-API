@@ -1,9 +1,10 @@
-package de.martenschaefer.serialization.codec
+package de.martenschaefer.data.serialization.codec
 
-import de.martenschaefer.serialization.{ Codec, Decoded, Element, ElementError, ElementNode }
-import de.martenschaefer.serialization.Element._
-import de.martenschaefer.serialization.util.Either
-import de.martenschaefer.serialization.util.Either._
+import de.martenschaefer.data.serialization.ElementError
+import de.martenschaefer.data.serialization.{ Codec, Element, ElementError, ElementNode }
+import de.martenschaefer.data.serialization.Decoded
+import de.martenschaefer.data.serialization.Element._
+import de.martenschaefer.data.serialization.util.Either._
 
 class OptionCodec[T: Codec] extends Codec[Option[T]] {
     override def encodeElement(option: Option[T]): Element = option match {

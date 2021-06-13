@@ -1,11 +1,11 @@
-package de.martenschaefer.serialization
+package de.martenschaefer.data.serialization
 
 import java.io.{ StringReader, StringWriter }
 import java.util.Properties
 import scala.annotation.tailrec
 import scala.jdk.CollectionConverters
-import de.martenschaefer.serialization.util.Either
-import de.martenschaefer.serialization.util.Either._
+import de.martenschaefer.data.serialization.util.Either._
+import de.martenschaefer.data.serialization.util.Either
 
 object PropertiesCodecs {
     given propertiesEncoder: Encoder[Element, String] with {

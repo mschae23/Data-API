@@ -1,4 +1,4 @@
-package de.martenschaefer.serialization
+package de.martenschaefer.data.serialization
 
 enum ElementNode {
     case Name(val name: String)

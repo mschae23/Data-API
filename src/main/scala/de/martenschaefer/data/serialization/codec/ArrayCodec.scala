@@ -1,8 +1,8 @@
-package de.martenschaefer.serialization.codec
+package de.martenschaefer.data.serialization.codec
 
-import de.martenschaefer.serialization.{ Codec, Decoded, Element, ElementError, ElementNode }
-import de.martenschaefer.serialization.Element._
-import de.martenschaefer.serialization.util.Either._
+import de.martenschaefer.data.serialization.Element._
+import de.martenschaefer.data.serialization.util.Either._
+import de.martenschaefer.data.serialization.{ Codec, Decoded, Element, ElementError, ElementNode }
 
 class ArrayCodec[T: Codec] extends Codec[List[T]] {
     override def encodeElement(values: List[T]): Element =

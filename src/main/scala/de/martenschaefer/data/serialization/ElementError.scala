@@ -1,4 +1,4 @@
-package de.martenschaefer.serialization
+package de.martenschaefer.data.serialization
 
 enum ElementError(val element: Element, val path: List[ElementNode]) {
     case NotAnInt(override val element: Element, override val path: List[ElementNode]) extends ElementError(element, path)

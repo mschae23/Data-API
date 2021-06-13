@@ -1,4 +1,4 @@
-package de.martenschaefer.serialization
+package de.martenschaefer.data.serialization
 
 enum Element {
     case Null

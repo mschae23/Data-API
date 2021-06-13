@@ -1,6 +1,6 @@
-package de.martenschaefer.serialization
+package de.martenschaefer.data.serialization
 
-import de.martenschaefer.serialization.util.Either
+import de.martenschaefer.data.serialization.util.Either
 
 object TestMain {
     def main(args: Array[String]): Unit = {
