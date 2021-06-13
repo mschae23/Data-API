@@ -58,20 +58,26 @@ trait Codec[T] {
 
     def xmap[B](to: T => B)(from: B => T): Codec[B] = Invariant[Codec].imap(this)(to)(from)
 
-    def dispatch[B](typeKey: String, typeFunction: B => T, codec: T => Codec[_ <: B], lifecycle: Lifecycle): Codec[B] =
-        new KeyDispatchCodec[T, B](typeKey, b => Right(typeFunction(b)), codec, lifecycle)(using this)
+    def dispatch[B](typeKey: String, valueKey: String, typeFunction: B => T, codec: T => Codec[_ <: B], lifecycle: Lifecycle): Codec[B] =
+        new KeyDispatchCodec[T, B](typeKey, valueKey, b => Right(typeFunction(b)), codec, lifecycle)(using this)
+
+    def dispatch[B](typeKey: String, valueKey: String, typeFunction: B => T, codec: T => Codec[_ <: B]): Codec[B] =
+        this.dispatch(typeKey, valueKey, typeFunction, codec, this.lifecycle)
+
+    def dispatchStable[B](typeKey: String, valueKey: String, typeFunction: B => T, codec: T => Codec[_ <: B]): Codec[B] =
+        this.dispatch(typeKey, valueKey, typeFunction, codec, Lifecycle.Stable)
 
     def dispatch[B](typeKey: String, typeFunction: B => T, codec: T => Codec[_ <: B]): Codec[B] =
-        this.dispatch(typeKey, typeFunction, codec, this.lifecycle)
+        this.dispatch(typeKey, "value", typeFunction, codec, this.lifecycle)
 
     def dispatchStable[B](typeKey: String, typeFunction: B => T, codec: T => Codec[_ <: B]): Codec[B] =
-        this.dispatch(typeKey, typeFunction, codec, Lifecycle.Stable)
+        this.dispatch(typeKey, "value", typeFunction, codec, Lifecycle.Stable)
 
     def dispatch[B](typeFunction: B => T, codec: T => Codec[_ <: B]): Codec[B] =
-        this.dispatch("type", typeFunction, codec)
+        this.dispatch("type", "value", typeFunction, codec)
 
     def dispatchStable[B](typeFunction: B => T, codec: T => Codec[_ <: B]): Codec[B] =
-        this.dispatch("type", typeFunction, codec, Lifecycle.Stable)
+        this.dispatch("type", "value", typeFunction, codec, Lifecycle.Stable)
 
     def withLifecycle(newLifecycle: Lifecycle): Codec[T] = new Codec[T] {
         def encodeElement(value: T): Element = self.encodeElement(value)

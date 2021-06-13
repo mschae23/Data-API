@@ -72,17 +72,17 @@ object TestMain {
         }
 
         object Feature1 {
-            given Codec[Feature1] = Codec[String].fieldOf("name").xmap(Feature1(_))(_.name)
+            given Codec[Feature1] = Codec[String].xmap(Feature1(_))(_.name)
         }
 
-        case class Feature2(val something: String) extends Feature {
+        case class Feature2(val name: String) extends Feature {
             override def getCodec: Codec[Feature2] = Codec[Feature2]
 
-            override def getString: String = s"Something: $something"
+            override def getString: String = s"Name: $name"
         }
 
         object Feature2 {
-            given Codec[Feature2] = Codec[String].fieldOf("something").xmap(Feature2(_))(_.something)
+            given Codec[Feature2] = Codec[String].fieldOf("name").xmap(Feature2(_))(_.name)
         }
 
         object Feature {
@@ -95,11 +95,19 @@ object TestMain {
         println(Codec[Feature].encode(Feature1("Hallo")))
 
         val featureElement = ObjectElement(Map(
-            "name" -> StringElement("Test Test"),
+            "value" -> StringElement("Test Test"),
             "type" -> StringElement("test:feature1")
         ))
 
-        println()
+        val featureElement2 = ObjectElement(Map(
+            "value" -> ObjectElement(Map(
+                "name" -> StringElement("Hello")
+            )),
+            "type" -> StringElement("test:feature2")
+        ))
+
         println(Codec[Feature].decodeElement(featureElement))
+        println(Codec[Feature].decodeElement(featureElement2))
+        println(Codec[Feature].lifecycle)
     }
 }

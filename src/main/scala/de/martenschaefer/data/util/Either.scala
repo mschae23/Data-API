@@ -35,6 +35,16 @@ enum Either[+L, +R] {
             case Right(value) => r(value)
         }
 
+    def orElse[R1 >: R](alternative: => R1): Either[L, R1] = this match {
+        case Left(_) => Right(alternative)
+        case _ => this
+    }
+
+    def flatOrElse[L1 >: L, R1](alternative: => Either[L1, R1]): Either[L1, R1] = this match {
+        case Left(_) => alternative
+        case _ => this.asInstanceOf[Either[L1, R1]]
+    }
+
     /**
      * @throws IllegalStateException if {@code this} is not {@code Left}
      */
