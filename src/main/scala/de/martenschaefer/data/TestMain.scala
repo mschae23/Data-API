@@ -34,6 +34,7 @@ object TestMain {
 
         val test3 = Test3(Test2(false, Test("Hello!", 5)))
 
+        println("# Encoding Test")
         println(test3Codec.encode(test3))
 
         val testInput =
@@ -45,6 +46,7 @@ object TestMain {
 
         val decoded = test3Codec.decode(testInput)
 
+        println("# Decoding Test")
         decoded match {
             case Either.Right(value) => println(value)
             case Either.Left(errors) => for (error <- errors) println(error)
@@ -56,6 +58,8 @@ object TestMain {
 
     def codecDispatchTest(): Unit = {
         import de.martenschaefer.data.registry.Registry.register
+
+        println("# Codec Dispatch Test")
 
         trait Feature {
             def getCodec: Codec[_ <: Feature]

@@ -1,5 +1,6 @@
 package de.martenschaefer.data.serialization.codec
 
+import scala.collection.immutable.ListMap
 import de.martenschaefer.data.serialization.Element._
 import de.martenschaefer.data.util.Either._
 import de.martenschaefer.data.serialization.{ Codec, Decoded, Element, ElementError, ElementNode }
@@ -15,7 +16,7 @@ class KeyDispatchCodec[K: Codec, V](val typeKey: String = "type",
             case Right(encoder) =>
                 ObjectElement(encoder.encodeElement(value) match {
                     case ObjectElement(map) => map.updated(this.typeKey, this.encodeType(value))
-                    case element => Map(this.valueKey -> element, this.typeKey -> this.encodeType(value))
+                    case element => ListMap(this.valueKey -> element, this.typeKey -> this.encodeType(value))
                 })
             case Left(errors) => throw new RuntimeException(errors.toString)
         }

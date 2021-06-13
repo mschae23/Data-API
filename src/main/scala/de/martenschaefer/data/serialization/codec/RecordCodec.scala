@@ -1,5 +1,6 @@
 package de.martenschaefer.data.serialization.codec
 
+import scala.collection.immutable.ListMap
 import de.martenschaefer.data.serialization.Element._
 import de.martenschaefer.data.serialization.ElementError._
 import de.martenschaefer.data.util.Either._
@@ -8,7 +9,7 @@ import de.martenschaefer.data.util.Lifecycle
 
 class RecordCodec[T](fields: List[FieldCodec[_, T]], creator: (FieldCodec[_, T] => _) ?=> T) extends Codec[T] {
     def encodeElement(value: T): Element =
-        Element.ObjectElement(fields.map(field => (field.fieldName, field.encodeElement(field.getter(value)))).toMap)
+        Element.ObjectElement(ListMap.from(fields.map(field => (field.fieldName, field.encodeElement(field.getter(value))))))
 
     def decodeElement(element: Element): Decoded[T] =
         element match {
