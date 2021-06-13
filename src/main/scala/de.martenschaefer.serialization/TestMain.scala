@@ -34,8 +34,8 @@ object TestMain {
 
         val testInput =
             """
-              some.testValue = true
-              some.testObject.test1 = Lalala
+              some.testValue = false
+              some.testObject.test1 = Something
               some.testObject.test2 = 3
               """.stripMargin
 

@@ -78,7 +78,7 @@ object Codec {
             def decodeElement(element: Element): Decoded[T] =
                 element match {
                     case Element.ObjectElement(map) => {
-                        val valueDecodedMap = map.map((name, fieldElement) =>
+                       /*  val valueDecodedMap = map.map((name, fieldElement) =>
                             (name, fields.find(codec => codec.fieldName == name)
                               .get.decodeElement(fieldElement)))
 
@@ -94,6 +94,26 @@ object Codec {
                             val map = valueDecodedMap.map((name, decoded) => (name, decoded.getRight))
                             Right(creator(using fieldCodec => map.get(fieldCodec.fieldName).getOrElse(
                                 return Left(Vector(KeyNotFound(fieldCodec.fieldName, element, List()))))))
+                        else
+                            Left(errors) */
+
+                        var fieldMap = Map[FieldCodec[_, T], Any]()
+                        var errors = Vector[ElementError]()
+
+                        for (fieldCodec <- fields) {
+                            val field = map.get(fieldCodec.fieldName)
+                            val decoded = field.map(f => fieldCodec.decodeElement(f)).getOrElse(
+                                Left(Vector(MissingKey(element, List()))))
+
+                            decoded match {
+                                case Right(value) => fieldMap = fieldMap.updated(fieldCodec, value)
+                                case Left(fieldErrors) => errors = errors.appendedAll(fieldErrors.map(_
+                                  .withPrependedPath(fieldCodec.fieldName)))
+                            }
+                        }
+
+                        if (errors.isEmpty)
+                            Right(creator(using fieldCodec => fieldMap(fieldCodec)))
                         else
                             Left(errors)
                     }
@@ -208,8 +228,8 @@ trait IncompleteFieldCodec[T](val fieldName: String) extends Codec[T] {
 
             def decodeElement(element: Element): Decoded[B] = element match {
                 case Element.ObjectElement(map) =>
-                    self.decodeElement(map.get(self.fieldName).get).mapBoth(_.map(_
-                      .withPrependedPath(self.fieldName)))(to)
+                    self.decodeElement(map.get(self.fieldName).getOrElse(return Left(Vector(MissingKey(element,
+                        List(ElementNode.Name(self.fieldName))))))).mapBoth(_.map(_.withPrependedPath(self.fieldName)))(to)
 
                 case _ => Left(Vector(ElementError.NotAnObject(element, List())))
             }

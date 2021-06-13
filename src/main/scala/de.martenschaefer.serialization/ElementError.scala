@@ -9,7 +9,7 @@ enum ElementError(val element: Element, val path: List[ElementNode]) {
     case NotAString(override val element: Element, override val path: List[ElementNode]) extends ElementError(element, path)
     case NotAnArray(override val element: Element, override val path: List[ElementNode]) extends ElementError(element, path)
     case NotAnObject(override val element: Element, override val path: List[ElementNode]) extends ElementError(element, path)
-    case KeyNotFound(val key: String, override val element: Element, override val path: List[ElementNode]) extends ElementError(element, path)
+    case MissingKey(override val element: Element, override val path: List[ElementNode]) extends ElementError(element, path)
 
     case Neither(override val element: Element, override val path: List[ElementNode]) extends ElementError(element, path)
 
@@ -22,7 +22,7 @@ enum ElementError(val element: Element, val path: List[ElementNode]) {
         case NotAString(e, path) => NotAString(e, prependedPath :: path)
         case NotAnArray(e, path) => NotAnArray(e, prependedPath :: path)
         case NotAnObject(e, path) => NotAnObject(e, prependedPath :: path)
-        case KeyNotFound(key, e, path) => KeyNotFound(key, e, prependedPath :: path)
+        case MissingKey(e, path) => MissingKey(e, prependedPath :: path)
         case Neither(e, path) => Neither(e, prependedPath :: path)
     }
 
@@ -37,7 +37,8 @@ enum ElementError(val element: Element, val path: List[ElementNode]) {
         case NotAString(_, _) => s"$path is not a String"
         case NotAnArray(_, _) => s"$path is not an array"
         case NotAnObject(_, _) => s"$path is not an object"
-        case KeyNotFound(key, _, _) => s"Key \"$key\" in $path not found"
+        case MissingKey(_, _) => s"Missing key \"${ this.path(this.path.size - 1).toString.tail }\" in "
+            + (if (this.path.size < 2) "root node" else this.path.dropRight(1).mkString("", "", "").tail)
         case Neither(_, _) => s"$path doesn't fit either"
     }
 
