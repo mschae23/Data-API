@@ -5,6 +5,7 @@ import de.martenschaefer.data.serialization.{ Codec, Element, ElementError, Elem
 import de.martenschaefer.data.serialization.Decoded
 import de.martenschaefer.data.serialization.Element._
 import de.martenschaefer.data.serialization.util.Either._
+import de.martenschaefer.data.util.Lifecycle
 
 class OptionCodec[T: Codec] extends Codec[Option[T]] {
     override def encodeElement(option: Option[T]): Element = option match {
@@ -18,4 +19,6 @@ class OptionCodec[T: Codec] extends Codec[Option[T]] {
 
             case _ => Codec[T].decodeElement(element).map(Some(_))
         }
+
+    override val lifecycle: Lifecycle = Codec[T].lifecycle
 }

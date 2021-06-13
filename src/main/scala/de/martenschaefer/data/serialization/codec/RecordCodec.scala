@@ -4,6 +4,7 @@ import de.martenschaefer.data.serialization.Element._
 import de.martenschaefer.data.serialization.ElementError._
 import de.martenschaefer.data.serialization.util.Either._
 import de.martenschaefer.data.serialization.{ Codec, Decoded, Element, ElementError, ElementNode, FieldCodec }
+import de.martenschaefer.data.util.Lifecycle
 
 class RecordCodec[T](fields: List[FieldCodec[_, T]], creator: (FieldCodec[_, T] => _) ?=> T) extends Codec[T] {
     def encodeElement(value: T): Element =
@@ -35,4 +36,7 @@ class RecordCodec[T](fields: List[FieldCodec[_, T]], creator: (FieldCodec[_, T] 
 
             case _ => Left(Vector(ElementError.NotAnObject(element, List())))
         }
+
+    override val lifecycle: Lifecycle =
+        this.fields.foldLeft(Lifecycle.Stable)((lifecycle, field) => lifecycle + field.lifecycle)
 }

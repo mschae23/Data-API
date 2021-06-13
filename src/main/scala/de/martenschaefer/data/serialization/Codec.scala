@@ -8,23 +8,24 @@ import de.martenschaefer.data.serialization.ElementError._
 import de.martenschaefer.data.serialization.codec.{ ArrayCodec, EitherCodec, OptionCodec, PrimitiveCodec, RecordCodec }
 import de.martenschaefer.data.serialization.util.Either
 import de.martenschaefer.data.serialization.util.Either._
+import de.martenschaefer.data.util.Lifecycle
 
 type Decoded[T] = Either[Vector[ElementError], T]
 
-trait Encoder[A, T] {
-    def encode(value: A): T
+trait Encoder[A, B] {
+    def encode(value: A): B
 }
 
 object Encoder {
-    def apply[A, T](using e: Encoder[A, T]): Encoder[A, T] = e
+    def apply[A, B](using e: Encoder[A, B]): Encoder[A, B] = e
 }
 
-trait Decoder[A, T] {
-    def decode(encoded: T): Decoded[A]
+trait Decoder[A, B] {
+    def decode(encoded: B): Decoded[A]
 }
 
 object Decoder {
-    def apply[A, T](using d: Decoder[A, T]): Decoder[A, T] = d
+    def apply[A, B](using d: Decoder[A, B]): Decoder[A, B] = d
 }
 
 trait Codec[T] {
@@ -33,6 +34,8 @@ trait Codec[T] {
     def encodeElement(value: T): Element
 
     def decodeElement(element: Element): Decoded[T]
+
+    val lifecycle: Lifecycle
 
     def encode[E](value: T)(using Encoder[Element, E]): E =
         Encoder[Element, E].encode(this.encodeElement(value))
@@ -50,7 +53,23 @@ trait Codec[T] {
 
             def decodeElement(element: Element): Decoded[T] =
                 self.decodeElement(element)
+
+            override val lifecycle: Lifecycle = self.lifecycle
         }
+
+    def withLifecycle(newLifecycle: Lifecycle): Codec[T] = new Codec[T] {
+        def encodeElement(value: T): Element = self.encodeElement(value)
+
+        def decodeElement(element: Element): Decoded[T] = self.decodeElement(element)
+
+        val lifecycle: Lifecycle = newLifecycle
+    }
+
+    def stable: Codec[T] = this.withLifecycle(Lifecycle.Stable)
+
+    def experimental: Codec[T] = this.withLifecycle(Lifecycle.Experimental)
+
+    def deprecated(since: Int): Codec[T] = this.withLifecycle(Lifecycle.Deprecated(since))
 }
 
 object Codec {
@@ -64,6 +83,8 @@ object Codec {
 
                 def decodeElement(element: Element): Decoded[B] =
                     codec.decodeElement(element).map(to)
+
+                override val lifecycle: Lifecycle = codec.lifecycle
             }
 
     def record[T](builder: Buffer[FieldCodec[_, T]] ?=> (Buffer[FieldCodec[_, T]], ((FieldCodec[_, T] => _) ?=> T))): Codec[T] = {
@@ -112,6 +133,8 @@ trait IncompleteFieldCodec[T](val fieldName: String) extends Codec[T] {
 
             def decodeElement(element: Element): Decoded[T] =
                 self.decodeElement(element)
+
+            override val lifecycle: Lifecycle = self.lifecycle
         }
 
         fields.addOne(codec)
@@ -130,6 +153,8 @@ trait IncompleteFieldCodec[T](val fieldName: String) extends Codec[T] {
 
                 case _ => Left(Vector(ElementError.NotAnObject(element, List())))
             }
+
+            override val lifecycle: Lifecycle = self.lifecycle
         }
 }
 

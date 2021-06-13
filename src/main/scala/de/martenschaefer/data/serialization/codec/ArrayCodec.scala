@@ -3,6 +3,7 @@ package de.martenschaefer.data.serialization.codec
 import de.martenschaefer.data.serialization.Element._
 import de.martenschaefer.data.serialization.util.Either._
 import de.martenschaefer.data.serialization.{ Codec, Decoded, Element, ElementError, ElementNode }
+import de.martenschaefer.data.util.Lifecycle
 
 class ArrayCodec[T: Codec] extends Codec[List[T]] {
     override def encodeElement(values: List[T]): Element =
@@ -27,4 +28,6 @@ class ArrayCodec[T: Codec] extends Codec[List[T]] {
 
         case _ => Left(Vector(ElementError.NotAnArray(element, List())))
     }
+
+    override val lifecycle: Lifecycle = Codec[T].lifecycle
 }

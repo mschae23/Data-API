@@ -5,8 +5,14 @@ import de.martenschaefer.data.serialization.{ Codec, Element, ElementError, Elem
 import de.martenschaefer.data.serialization.Decoded
 import de.martenschaefer.data.serialization.Element._
 import de.martenschaefer.data.serialization.util.Either._
+import de.martenschaefer.data.util.Lifecycle
 
-class PrimitiveCodec[T, E <: Element](val element: T => Element, isElement: Element => Boolean, getter: E => T, val error: Element => ElementError) extends Codec[T] {
+class PrimitiveCodec[T, E <: Element](element: T => Element, isElement: Element => Boolean,
+                                      getter: E => T, val error: Element => ElementError,
+                                      override val lifecycle: Lifecycle) extends Codec[T] {
+    def this(element: T => Element, isElement: Element => Boolean, getter: E => T, error: Element => ElementError) =
+        this(element, isElement, getter, error, Lifecycle.Stable)
+
     override def encodeElement(value: T): Element =
         this.element(value)
 

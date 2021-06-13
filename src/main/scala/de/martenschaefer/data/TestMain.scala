@@ -1,6 +1,7 @@
-package de.martenschaefer.data.serialization
+package de.martenschaefer.data
 
 import de.martenschaefer.data.serialization.util.Either
+import de.martenschaefer.data.serialization.{ Codec, PropertiesCodecs }
 
 object TestMain {
     def main(args: Array[String]): Unit = {
@@ -25,6 +26,7 @@ object TestMain {
         case class Test3(val some: Test2)
 
         val test3Codec = test2Codec.fieldOf("some").xmap(Test3(_))(_.some)
+        println(test3Codec.lifecycle)
 
         val test3 = Test3(Test2(false, Test("Hello!", 5)))
 

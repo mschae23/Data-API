@@ -4,6 +4,7 @@ import de.martenschaefer.data.serialization.Element._
 import de.martenschaefer.data.serialization.util.Either
 import de.martenschaefer.data.serialization.util.Either._
 import de.martenschaefer.data.serialization.{ Codec, Decoded, Element, ElementError, ElementNode }
+import de.martenschaefer.data.util.Lifecycle
 
 class EitherCodec[L: Codec, R: Codec] extends Codec[Either[L, R]] {
     override def encodeElement(option: Either[L, R]): Element = option match {
@@ -19,4 +20,6 @@ class EitherCodec[L: Codec, R: Codec] extends Codec[Either[L, R]] {
                 case Left(errors2) => Left(Vector(ElementError.Neither(element, List())))
             }
         }
+
+    override val lifecycle: Lifecycle = Codec[L].lifecycle + Codec[R].lifecycle
 }
