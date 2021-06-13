@@ -18,9 +18,12 @@ class RecordCodec[T](fields: List[FieldCodec[_, T]], creator: (FieldCodec[_, T] 
                 var errors = Vector[ElementError]()
 
                 for (fieldCodec <- fields) {
-                    val field = map.get(fieldCodec.fieldName)
-                    val decoded = field.map(f => fieldCodec.decodeElement(f)).getOrElse(
-                        Left(Vector(MissingKey(element, List()))))
+                    val field = map.get(fieldCodec.fieldName).getOrElse(Element.None)
+                    val decoded = fieldCodec.decodeElement(field) match {
+                        case Right(value) => Right(value)
+                        case Left(_) if field == Element.None => Left(Vector(MissingKey(element, List())))
+                        case decoded => decoded
+                    }
 
                     decoded match {
                         case Right(value) => fieldMap = fieldMap.updated(fieldCodec, value)
