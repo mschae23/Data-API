@@ -1,11 +1,15 @@
 package de.martenschaefer.data.util
 
+import de.martenschaefer.data.serialization.Codec
+
 case class Identifier(namespace: String, path: String) {
   override def toString() =
     namespace + Identifier.SEPARATOR + path
 }
 
 object Identifier {
+  given Codec[Identifier] = Codec[String].xmap(Identifier(_))(_.toString)
+
   val SEPARATOR = ':'
   
   def apply(string: String): Identifier = {

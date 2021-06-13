@@ -1,10 +1,9 @@
 package de.martenschaefer.data.serialization.codec
 
 import de.martenschaefer.data.serialization.Element._
-import de.martenschaefer.data.serialization.util.Either
-import de.martenschaefer.data.serialization.util.Either._
+import de.martenschaefer.data.util.Either._
 import de.martenschaefer.data.serialization.{ Codec, Decoded, Element, ElementError, ElementNode }
-import de.martenschaefer.data.util.Lifecycle
+import de.martenschaefer.data.util.{ Either, Lifecycle }
 
 class EitherCodec[L: Codec, R: Codec] extends Codec[Either[L, R]] {
     override def encodeElement(option: Either[L, R]): Element = option match {

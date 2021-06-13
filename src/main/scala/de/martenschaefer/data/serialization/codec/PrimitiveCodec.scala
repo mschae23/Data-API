@@ -4,7 +4,7 @@ import de.martenschaefer.data.serialization.ElementError
 import de.martenschaefer.data.serialization.{ Codec, Element, ElementError, ElementNode }
 import de.martenschaefer.data.serialization.Decoded
 import de.martenschaefer.data.serialization.Element._
-import de.martenschaefer.data.serialization.util.Either._
+import de.martenschaefer.data.util.Either._
 import de.martenschaefer.data.util.Lifecycle
 
 class PrimitiveCodec[T, E <: Element](element: T => Element, isElement: Element => Boolean,

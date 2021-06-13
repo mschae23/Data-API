@@ -2,9 +2,11 @@ package de.martenschaefer.data.registry.impl
 
 import scala.collection.mutable.HashMap
 import de.martenschaefer.data.registry.{ Registry, RegistryKey }
-import de.martenschaefer.data.util.Identifier
+import de.martenschaefer.data.util.{ Identifier, Lifecycle }
 
-class SimpleRegistry[T](val name: Identifier) extends Registry[T] {
+class SimpleRegistry[T](val name: Identifier, override val lifecycle: Lifecycle) extends Registry[T](lifecycle) {
+    def this(name: Identifier) = this(name, Lifecycle.Stable)
+
     private val elements = HashMap.empty[Identifier, T]
 
     override def register(id: Identifier, t: T) = {

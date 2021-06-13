@@ -13,6 +13,9 @@ enum ElementError(val element: Element, val path: List[ElementNode]) {
 
     case Neither(override val element: Element, override val path: List[ElementNode]) extends ElementError(element, path)
 
+    case ValidationError(val message: String => String, override val element: Element, override val path: List[ElementNode])
+      extends ElementError(element, path)
+
     def withPrependedPath(prependedPath: ElementNode): ElementError = this match {
         case NotAnInt(e, path) => NotAnInt(e, prependedPath :: path)
         case NotALong(e, path) => NotALong(e, prependedPath :: path)
@@ -24,6 +27,7 @@ enum ElementError(val element: Element, val path: List[ElementNode]) {
         case NotAnObject(e, path) => NotAnObject(e, prependedPath :: path)
         case MissingKey(e, path) => MissingKey(e, prependedPath :: path)
         case Neither(e, path) => Neither(e, prependedPath :: path)
+        case ValidationError(msg, e, path) => ValidationError(msg, e, prependedPath :: path)
     }
 
     def withPrependedPath(prependedPath: String): ElementError = this.withPrependedPath(ElementNode.Name(prependedPath))
@@ -40,6 +44,7 @@ enum ElementError(val element: Element, val path: List[ElementNode]) {
         case MissingKey(_, _) => s"Missing key \"${ this.path(this.path.size - 1).toString.tail }\" in "
             + (if (this.path.size < 2) "root node" else this.path.dropRight(1).mkString("", "", "").tail)
         case Neither(_, _) => s"$path doesn't fit either"
+        case ValidationError(msg, _, _) => msg(path)
     }
 
     def getPath: String = this.path.mkString("", "", "").tail

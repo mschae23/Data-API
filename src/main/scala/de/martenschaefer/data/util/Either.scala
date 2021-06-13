@@ -1,4 +1,4 @@
-package de.martenschaefer.data.serialization.util
+package de.martenschaefer.data.util
 
 enum Either[+L, +R] {
     case Left(val value: L)
