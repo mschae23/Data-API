@@ -46,7 +46,10 @@ object Version {
 
     given Codec[Undefined] = Codec[String].xmap[Undefined](Undefined(_))(_.version)
 
-    given Codec[Version] = Codec[Either[Either[Simple, Semver], Undefined]].xmap(_ match {
+    private val errorMsg = (path: String) => s"$path should be a semver object, a simple int or a string"
+
+    given Codec[Version] = Codec.either[Either[Simple, Semver], Undefined](errorMsg)(
+        using Codec.either[Simple, Semver](errorMsg), Codec[Undefined]).xmap(_ match {
         case Left(either2) => either2 match {
             case Left(Simple(version)) => Simple(version)
             case Right(Semver(major, minor, patch, preRelease)) => Semver(major, minor, patch, preRelease)

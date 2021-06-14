@@ -21,14 +21,16 @@ enum Lifecycle {
 }
 
 object Lifecycle {
+    private val errorMsg = (path: String) =>
+        s"$path should be \"stable\", \"experimental\" or an object with a \"deprecated_since\" field"
+
     given Codec[Lifecycle.Deprecated] = Codec[Int].fieldOf("deprecated_since").xmap[Lifecycle.Deprecated](Lifecycle.Deprecated(_))(_.since)
 
-    given Codec[Lifecycle] = Codec[Either[String, Lifecycle.Deprecated]].flatXmap((either, element) => either match {
+    given Codec[Lifecycle] = Codec.either[String, Lifecycle.Deprecated](errorMsg).flatXmap((either, element) => either match {
         case Left(name) => name match {
             case "stable" => Right(Lifecycle.Stable)
             case "experimental" => Right(Lifecycle.Experimental)
-            case _ => Left(Vector(ElementError.ValidationError(path =>
-                s"$path should be \"stable\", \"experimental\" or an object with a \"deprecated_since\" field", element, List())))
+            case _ => Left(Vector(ElementError.ValidationError(errorMsg, element, List())))
         }
         case Right(deprecated) => Right(deprecated)
     })(_ match {

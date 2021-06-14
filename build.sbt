@@ -1,33 +1,36 @@
 val scala3Version = "3.0.0"
 
 credentials +=
-  Credentials(
-      "GitHub Package Registry",
-      "maven.pkg.github.com",
-      "mschae23",
-      sys.env("GITHUB_TOKEN")
-  )
+    Credentials(
+        "GitHub Package Registry",
+        "maven.pkg.github.com",
+        "mschae23",
+        sys.env("GITHUB_TOKEN")
+    )
 
 lazy val root = project
-  .in(file("."))
-  .settings(
-      name := "data-api",
-      organization := "de.martenschaefer",
-      version := "0.1.0",
-      homepage := Some(url("https://github.com/mschae23/Data-API")),
+    .in(file("."))
+    .settings(
+        name := "data-api",
+        organization := "de.martenschaefer",
+        version := "0.1.0",
+        homepage := Some(url("https://github.com/mschae23/Data-API")),
 
-      scalaVersion := scala3Version,
+        scalaVersion := scala3Version,
 
-      libraryDependencies ++= Seq(
-          "org.typelevel" %% "cats-core" % "2.6.1"
-          // "org.typelevel" %% "cats-effect" % "3.1.1"
-      ),
+        libraryDependencies ++= Seq(
+            "org.typelevel" %% "cats-core" % "2.6.1",
+            // "org.typelevel" %% "cats-effect" % "3.1.1",
 
-      resolvers += "GitHub Package Registry (mschae23/Data-API)" at "https://maven.pkg.github.com/mschae23/Data-API",
+            "org.scalactic" %% "scalactic" % "3.2.9",
+            "org.scalatest" %% "scalatest" % "3.2.9" % "test"
+        ),
 
-      publishTo := Some("GitHub Package Registry" at "https://maven.pkg.github.com/mschae23/Data-API"),
-      scmInfo := Some(ScmInfo(url("https://github.com/mschae23/Data-API"), "scm:git@github.com:mschae23/Data-API.git")),
+        resolvers += "GitHub Package Registry (mschae23/Data-API)" at "https://maven.pkg.github.com/mschae23/Data-API",
 
-      publishMavenStyle := true,
-      versionScheme := Some("semver-spec")
-  )
+        publishTo := Some("GitHub Package Registry" at "https://maven.pkg.github.com/mschae23/Data-API"),
+        scmInfo := Some(ScmInfo(url("https://github.com/mschae23/Data-API"), "scm:git@github.com:mschae23/Data-API.git")),
+
+        publishMavenStyle := true,
+        versionScheme := Some("semver-spec")
+    )

@@ -154,7 +154,15 @@ object Codec {
 
     given[T: Codec]: Codec[Option[T]] = OptionCodec[T]
 
-    given[L: Codec, R: Codec]: Codec[Either[L, R]] = EitherCodec[L, R]
+    def either[L: Codec, R: Codec](errorMessage: String => String): Codec[Either[L, R]] = EitherCodec[L, R](errorMessage)
+
+    def either[L: Codec, R: Codec](errorMessage: String): Codec[Either[L, R]] = EitherCodec[L, R](
+        path => path + ": " + errorMessage)
+
+    def either[L: Codec, R: Codec](first: String, second: String): Codec[Either[L, R]] = EitherCodec[L, R](
+        path => s"$path is neither $first nor $second")
+
+    given [L: Codec, R: Codec]: Codec[Either[L, R]] = EitherCodec[L, R](path => s"$path: Doesn't fit either")
 
     given[T: Codec]: Codec[List[T]] = ArrayCodec[T]
 }
