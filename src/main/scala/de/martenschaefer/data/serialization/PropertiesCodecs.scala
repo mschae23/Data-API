@@ -4,7 +4,7 @@ import java.io.{ StringReader, StringWriter }
 import java.util.Properties
 import scala.annotation.tailrec
 import scala.jdk.CollectionConverters
-import de.martenschaefer.data.util.Either
+import de.martenschaefer.data.util.{ Either, Utils }
 import de.martenschaefer.data.util.Either._
 
 object PropertiesCodecs {
@@ -84,24 +84,7 @@ object PropertiesCodecs {
 
         def updateMap(map: Map[String, Element], path: List[String], value: String): Map[String, Element] = {
             if (path.size == 1)
-                map.updated(path(0), value.toIntOption match {
-                    case Some(number) => Element.IntElement(number)
-                    case None => value.toLongOption match {
-                        case Some(number) => Element.LongElement(number)
-                        case None => value.toFloatOption match {
-                            case Some(number) => Element.FloatElement(number)
-                            case None => value.toDoubleOption match {
-                                case Some(number) => Element.DoubleElement(number)
-                                case None => value.toBooleanOption match {
-                                    case Some(booleanValue) => Element.BooleanElement(booleanValue)
-                                    case None =>
-                                        if ("null".equals(value.strip)) Element.Null
-                                        else Element.StringElement(value)
-                                }
-                            }
-                        }
-                    }
-                })
+                map.updated(path(0), Utils.parsePrimitive(value))
             else {
                 val newMap = map.get(path(0)).map(_ match {
                     case Element.ObjectElement(fields) => fields

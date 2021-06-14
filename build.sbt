@@ -22,6 +22,8 @@ lazy val root = project
             "org.typelevel" %% "cats-core" % "2.6.1",
             // "org.typelevel" %% "cats-effect" % "3.1.1",
 
+            "com.google.code.gson" % "gson" % "2.8.7",
+
             "org.scalactic" %% "scalactic" % "3.2.9",
             "org.scalatest" %% "scalatest" % "3.2.9" % "test"
         ),
