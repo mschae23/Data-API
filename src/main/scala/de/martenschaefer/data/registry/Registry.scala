@@ -1,15 +1,15 @@
 package de.martenschaefer.data.registry
 
-import de.martenschaefer.data.serialization.{ Codec, Decoded, Element, ElementError }
-import de.martenschaefer.data.util.{ Identifier, Lifecycle }
+import de.martenschaefer.data.serialization.{ Codec, Element, ElementError, Result }
 import de.martenschaefer.data.util.Either._
+import de.martenschaefer.data.util.{ Identifier, Lifecycle }
 
 trait Registry[T](override val lifecycle: Lifecycle) extends Codec[T] {
     /**
      * Registers the given object.
      *
      * @param id The {@link Identifier} of the object.
-     * @param t The object to register.
+     * @param t  The object to register.
      * @throws IllegalStateException if an object with that {@code Identifier} was already registered.
      */
     def register(id: Identifier, t: T): Unit
@@ -19,13 +19,14 @@ trait Registry[T](override val lifecycle: Lifecycle) extends Codec[T] {
      * after it has been registered.
      *
      * @param id The {@link Identifier} of the object.
-     * @param t The object to set.
+     * @param t  The object to set.
      * @throws IllegalStateException if an object with that {@code Identifier} was not already registered.
      */
     def set(id: Identifier, t: T): Unit
 
     /**
      * Removes the object with the given {@link Identifier} from the registry.
+     *
      * @param id The {@link Identifier} of the object.
      * @return The object that was removed, or {@code None} if there was no object with that {@code Identifier}.
      */
@@ -81,11 +82,11 @@ trait Registry[T](override val lifecycle: Lifecycle) extends Codec[T] {
      */
     def getName: Identifier
 
-    override def encodeElement(value: T): Element =
+    override def encodeElement(value: T): Result[Element] =
         Codec[Identifier].encodeElement(this.getId(value).getOrElse(
             throw new IllegalArgumentException(s"Unknown registry element: $value")))
 
-    override def decodeElement(element: Element): Decoded[T] = {
+    override def decodeElement(element: Element): Result[T] = {
         Codec[Identifier].decodeElement(element) match {
             case Right(id) => this.get(id).map(Right(_)).getOrElse(Left(Vector(ElementError.ValidationError(path =>
                 s"$path: Unknown registry ID", element, List()))))

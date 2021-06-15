@@ -4,24 +4,24 @@ import java.io.{ StringReader, StringWriter }
 import java.util.Properties
 import scala.annotation.tailrec
 import scala.jdk.CollectionConverters
-import de.martenschaefer.data.util.{ Either, Utils }
 import de.martenschaefer.data.util.Either._
+import de.martenschaefer.data.util.{ Either, Utils }
 
 object PropertiesCodecs {
     given propertiesEncoder: Encoder[Element, String] with {
-        override def encode(element: Element): String = {
+        override def encode(element: Element): Result[String] = {
             val properties = new Properties()
 
             element match {
                 case Element.ObjectElement(map) =>
                     this.encodeObject(properties, map, "")
 
-                case _ => throw IllegalArgumentException("Not an object: " + element)
+                case _ => return Left(Vector(ElementError.NotAnObject(element, List())))
             }
 
             val writer = new StringWriter()
             properties.store(writer, null)
-            writer.toString()
+            Right(writer.toString())
         }
 
         def encodeObject(properties: Properties, map: Map[String, Element], namePrefix: String): Unit = {
@@ -59,7 +59,7 @@ object PropertiesCodecs {
     import CollectionConverters.SetHasAsScala
 
     given propertiesDecoder: Decoder[Element, String] with {
-        override def decode(encoded: String): Decoded[Element] = {
+        override def decode(encoded: String): Result[Element] = {
             val properties = new Properties()
             properties.load(new StringReader(encoded))
 

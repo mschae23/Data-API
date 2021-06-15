@@ -82,8 +82,18 @@ class CodecTest extends UnitSpec {
     ))
 
     "A Codec" should "encode an object to an Element" in {
-        assertResult(test5Element) {
+        assertResult(Right(test5Element)) {
             Codec[Test5].encodeElement(test5Object)
+        }
+    }
+
+    it should "encode an object to an Element (2)" in {
+        assertResult(Right(ObjectElement(Map(
+            "test" -> DoubleElement(17.3)
+        )))) {
+            case class Test(val test: Double)
+
+            Codec[Double].fieldOf("test").xmap(Test(_))(_.test).encodeElement(Test(17.3))
         }
     }
 

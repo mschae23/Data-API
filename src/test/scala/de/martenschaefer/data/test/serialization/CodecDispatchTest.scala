@@ -51,19 +51,19 @@ class CodecDispatchTest extends UnitSpec, BeforeAndAfterAll {
     }
 
     "Dispatched Codecs" should "correctly encode objects (1)" in {
-        assertResult(ObjectElement(Map(
+        assertResult(Right(ObjectElement(Map(
             "value" -> StringElement("Hello!"),
             "type" -> StringElement("test:feature1")
-        ))) {
+        )))) {
             Codec[Feature].encodeElement(Feature1("Hello!"))
         }
     }
 
     they should "correctly encode objects (2)" in {
-        assertResult(ObjectElement(Map(
+        assertResult(Right(ObjectElement(Map(
             "name" -> StringElement("Feature Name"),
             "type" -> StringElement("test:feature2")
-        ))) {
+        )))) {
             Codec[Feature].encodeElement(Feature2("Feature Name"))
         }
     }

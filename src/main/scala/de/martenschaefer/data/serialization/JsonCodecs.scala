@@ -11,24 +11,18 @@ object JsonCodecs {
     private val prettyGson = new GsonBuilder().setPrettyPrinting().create()
 
     given jsonEncoder: Encoder[Element, String] with {
-        override def encode(value: Element): String =
-            GsonElementCodec.decodeElement(value).map(gson.toJson(_)) match {
-                case Right(json) => json
-                case Left(errors) => throw new IllegalArgumentException(errors.toString)
-            }
+        override def encode(value: Element): Result[String] =
+            GsonElementCodec.decodeElement(value).map(gson.toJson(_))
     }
 
     val prettyJsonEncoder = new Encoder[Element, String] {
-        override def encode(value: Element): String =
-            GsonElementCodec.decodeElement(value).map(prettyGson.toJson(_)) match {
-                case Right(json) => json
-                case Left(errors) => throw new IllegalArgumentException(errors.toString)
-            }
+        override def encode(value: Element): Result[String] =
+            GsonElementCodec.decodeElement(value).map(prettyGson.toJson(_))
     }
 
     given jsonDecoder: Decoder[Element, String] with {
-        override def decode(encoded: String): Decoded[Element] = {
-            Right(GsonElementCodec.encodeElement(JsonParser.parseString(encoded)))
+        override def decode(encoded: String): Result[Element] = {
+            GsonElementCodec.encodeElement(JsonParser.parseString(encoded))
         }
     }
 }

@@ -1,24 +1,17 @@
 package de.martenschaefer.data.serialization.codec
 
-import de.martenschaefer.data.serialization.ElementError
-import de.martenschaefer.data.serialization.{ Codec, Element, ElementError, ElementNode }
-import de.martenschaefer.data.serialization.Decoded
 import de.martenschaefer.data.serialization.Element._
+import de.martenschaefer.data.serialization.{ Codec, Element, ElementError, ElementNode, Result }
 import de.martenschaefer.data.util.Either._
 import de.martenschaefer.data.util.Lifecycle
 
-class PrimitiveCodec[T, E <: Element](element: T => Element, isElement: Element => Boolean,
-                                      getter: E => T, val error: Element => ElementError,
+class PrimitiveCodec[T, E <: Element](element: T => Element, decode: Element => Result[T],
                                       override val lifecycle: Lifecycle) extends Codec[T] {
-    def this(element: T => Element, isElement: Element => Boolean, getter: E => T, error: Element => ElementError) =
-        this(element, isElement, getter, error, Lifecycle.Stable)
+    def this(element: T => Element, decode: Element => Result[T]) =
+        this(element, decode, Lifecycle.Stable)
 
-    override def encodeElement(value: T): Element =
-        this.element(value)
+    override def encodeElement(value: T): Result[Element] =
+        Right(this.element(value))
 
-    override def decodeElement(element: Element): Decoded[T] =
-        if (this.isElement(element))
-            Right(this.getter(element.asInstanceOf[E]))
-        else
-            Left(Vector(this.error(element)))
+    override def decodeElement(element: Element): Result[T] = this.decode(element)
 }

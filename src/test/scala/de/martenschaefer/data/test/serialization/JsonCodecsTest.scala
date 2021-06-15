@@ -28,15 +28,11 @@ class JsonCodecsTest extends UnitSpec {
     val prettyTestJson = "{\n  \"a\": true,\n  \"test_object\": {\n    \"name\": \"Test Name\",\n    \"something\": 123\n  }\n}"
 
     "The JSON codec" should "encode objects correctly" in {
-        assertResult(testJson) {
-            val result = Codec[Test2].encode(testValue)
-            println(result)
-            result
-        }
+        assertResult(Right(testJson))(Codec[Test2].encode(testValue))
     }
 
     it should "encode objects correctly (pretty)" in {
-        assertResult(prettyTestJson) {
+        assertResult(Right(prettyTestJson)) {
             Codec[Test2].encode(testValue)(using JsonCodecs.prettyJsonEncoder)
         }
     }

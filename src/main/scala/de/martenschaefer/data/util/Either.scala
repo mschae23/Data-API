@@ -29,6 +29,11 @@ enum Either[+L, +R] {
         case Right(value) => Right(r(value))
     }
 
+    def flatMapBoth[L1, R1](l: L => Either[L1, R1])(r: R => Either[L1, R1]): Either[L1, R1] = this match {
+        case Left(value) => l(value)
+        case Right(value) => r(value)
+    }
+
     def get[T](l: L => T)(r: R => T): T =
         this match {
             case Left(value) => l(value)
