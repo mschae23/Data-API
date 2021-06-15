@@ -14,6 +14,12 @@ enum ElementError(val element: Element, val path: List[ElementNode]) {
     case ValidationError(val message: String => String, override val element: Element, override val path: List[ElementNode])
       extends ElementError(element, path)
 
+    /**
+     * Returns this element error with the given node prepended to the path.
+     *
+     * @param prependedPath The {@link ElementNode} to prepend.
+     * @return The new element error
+     */
     def withPrependedPath(prependedPath: ElementNode): ElementError = this match {
         case NotAnInt(e, path) => NotAnInt(e, prependedPath :: path)
         case NotALong(e, path) => NotALong(e, prependedPath :: path)
@@ -27,8 +33,18 @@ enum ElementError(val element: Element, val path: List[ElementNode]) {
         case ValidationError(msg, e, path) => ValidationError(msg, e, prependedPath :: path)
     }
 
+    /**
+     * Returns this element error with the an {@code ElementNode.Name} prepended to the path.
+     *
+     * @param prependedPath The path node to prepend.
+     * @return The new element error
+     */
     def withPrependedPath(prependedPath: String): ElementError = this.withPrependedPath(ElementNode.Name(prependedPath))
 
+    /**
+     * @param path The path to the error.
+     * @return A human-readable description of the error.
+     */
     def getDescription(path: String): String = this match {
         case NotAnInt(_, _) => s"$path is not an int"
         case NotALong(_, _) => s"$path is not a long"
@@ -43,6 +59,9 @@ enum ElementError(val element: Element, val path: List[ElementNode]) {
         case ValidationError(msg, _, _) => msg(path)
     }
 
+    /**
+     * @return the path of this element error as a {@code String}.
+     */
     def getPath: String = this.path.mkString("", "", "").tail
 
     override def toString: String =

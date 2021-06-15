@@ -1,5 +1,9 @@
 package de.martenschaefer.data.serialization
 
+/**
+ * {@code Element} is a data type that objects can be encoded to, or decoded from.
+ * It can be nested with {@code ArrayElement} or {@code ObjectElement}.
+ */
 enum Element {
     case Null
     case None
@@ -16,14 +20,13 @@ enum Element {
     case ObjectElement(fields: Map[String, Element])
 
     override def toString: String = this match {
-        case Null => "null"
-        case None => "none"
+        case Null | None => "null"
 
-        case IntElement(value) => s"$value (int)"
-        case LongElement(value) => s"$value (long)"
-        case FloatElement(value) => s"$value (float)"
-        case DoubleElement(value) => s"$value (double)"
-        case BooleanElement(value) => s"$value (boolean)"
+        case IntElement(value) => s"$value"
+        case LongElement(value) => s"${value}L"
+        case FloatElement(value) => s"${value}f"
+        case DoubleElement(value) => s"$value"
+        case BooleanElement(value) => s"$value"
         case StringElement(value) => s"\"$value\""
 
         case ArrayElement(values) => values.mkString("[", ", ", "]")
