@@ -14,6 +14,8 @@ enum ElementError(val element: Element, val path: List[ElementNode]) {
     case ValidationError(val message: String => String, override val element: Element, override val path: List[ElementNode])
       extends ElementError(element, path)
 
+    case ParseError(val message: String, override val path: List[ElementNode]) extends ElementError(null, path)
+
     /**
      * Returns this element error with the given node prepended to the path.
      *
@@ -31,6 +33,7 @@ enum ElementError(val element: Element, val path: List[ElementNode]) {
         case NotAnObject(e, path) => NotAnObject(e, prependedPath :: path)
         case MissingKey(e, path) => MissingKey(e, prependedPath :: path)
         case ValidationError(msg, e, path) => ValidationError(msg, e, prependedPath :: path)
+        case ParseError(msg, path) => ParseError(msg, prependedPath :: path)
     }
 
     /**
@@ -57,6 +60,7 @@ enum ElementError(val element: Element, val path: List[ElementNode]) {
         case MissingKey(_, _) => s"Missing key \"${ this.path(this.path.size - 1).toString.tail }\" in "
             + (if (this.path.size < 2) "root node" else this.path.dropRight(1).mkString("", "", "").tail)
         case ValidationError(msg, _, _) => msg(path)
+        case _ => s"$path: Unknown error"
     }
 
     /**
@@ -64,6 +68,8 @@ enum ElementError(val element: Element, val path: List[ElementNode]) {
      */
     def getPath: String = this.path.mkString("", "", "").tail
 
-    override def toString: String =
-        s"${this.getDescription(if (this.path.isEmpty) "" else this.getPath)}: ${this.element}"
+    override def toString: String = this match {
+        case ParseError(msg, path) => s"Parse error at $path: $msg"
+        case _ => s"${this.getDescription(if (this.path.isEmpty) "" else this.getPath)}: ${this.element}"
+    }
 }

@@ -18,6 +18,7 @@ object GsonElementCodec extends Codec[JsonElement] {
                 case l: Long => LongElement(l.longValue())
                 case f: Float => FloatElement(f.floatValue())
                 case d: Double => DoubleElement(d.doubleValue())
+                case n => return Left(Vector(ElementError.ParseError(s"Unknown number object: $n", List())))
             }
             case p if p.isBoolean => BooleanElement(p.getAsBoolean)
             case p if p.isString => StringElement(p.getAsString)
@@ -64,16 +65,34 @@ object GsonElementCodec extends Codec[JsonElement] {
         case StringElement(value) => Right(new JsonPrimitive(value))
 
         case ArrayElement(values) => val array = new JsonArray(values.size)
-            for (i <- 0 until values.size)
-                val value = values(i)
-                this.decodeElement(value).mapBoth(errors => return Left(errors.map(_.withPrependedPath(
-                    ElementNode.Index(i)))))(array.add(_))
-            Right(array)
+            var errors = Vector[ElementError]()
+
+            for (i <- 0 until values.size) {
+                val element = values(i)
+                this.decodeElement(element).mapBoth(errorList => errors.appendedAll(Utils.withPrependedPath(
+                    errorList, ElementNode.Index(i))))(e =>
+                    array.add(e)
+                )
+            }
+
+            if (errors.isEmpty)
+                Right(array)
+            else
+                Left(errors)
         case ObjectElement(map) => val json = new JsonObject()
-            for ((key, e) <- map)
-                this.decodeElement(e).mapBoth(errors => return Left(errors.map(_.withPrependedPath(
-                    key))))(value => json.add(key, value))
-            Right(json)
+            var errors = Vector[ElementError]()
+
+            for ((key, element) <- map) {
+                this.decodeElement(element).mapBoth(errorList => errors.appendedAll(Utils.withPrependedPath(
+                    errorList, key)))(e =>
+                    json.add(key, e)
+                )
+            }
+
+            if (errors.isEmpty)
+                Right(json)
+            else
+                Left(errors)
     }
 
     override val lifecycle: Lifecycle = Lifecycle.Experimental

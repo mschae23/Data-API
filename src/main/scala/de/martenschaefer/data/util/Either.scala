@@ -76,3 +76,28 @@ enum Either[+L, +R] {
         case _ => false
     }
 }
+
+import scala.annotation.tailrec
+import cats.Monad
+
+object Either {
+    given[L]: Monad[[R] =>> Either[L, R]] with {
+        override def pure[R](value: R): Either[L, R] = Right(value)
+
+        override def flatMap[R, R1](either: Either[L, R])(f: R => Either[L, R1]): Either[L, R1] = either.flatMap(f)
+
+        override def tailRecM[A, B](a: A)(f: A => Either[L, scala.Either[A, B]]): Either[L, B] = {
+            @tailrec
+            def loop(aa: A): Either[L, B] = f(a) match {
+                case Right(either) => either match {
+                    case scala.Left(a1) => loop(a1)
+                    case scala.Right(b) => Right(b)
+                }
+
+                case Left(value) => Left(value)
+            }
+
+            loop(a)
+        }
+    }
+}

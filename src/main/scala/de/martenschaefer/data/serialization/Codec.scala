@@ -51,7 +51,7 @@ object Decoder {
  *
  * @tparam T The type of the objects that will be encoded or decoded by this
  */
-trait Codec[T] extends AbstractCodec[T, Element, Result] {
+trait Codec[T] extends AbstractCodec[T, Element, Result, Result] {
     self =>
 
     /**
@@ -539,13 +539,13 @@ trait IncompleteFieldCodec[T](val fieldName: String) extends Codec[T] {
 }
 
 trait FieldCodec[T, B](val fieldName: String, val getter: B => T) extends Codec[T] {
-    def apply(using context: FieldCodec[_, B] => _): T = context(this).asInstanceOf[T]
-
     /**
      * Gets the field value.
      *
      * @param context Context parameter of {@code Codec.build}, used in {@code Codec.record}.
      * @return The field value
      */
-    def get(using context: FieldCodec[_, B] => _): T = apply
+    def get(using context: FieldCodec[_, B] => _): T = context(this).asInstanceOf[T]
+
+    def apply(using FieldCodec[_, B] => _): T = get
 }

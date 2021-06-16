@@ -4,7 +4,7 @@ credentials +=
     Credentials(
         "GitHub Package Registry",
         "maven.pkg.github.com",
-        "mschae23",
+        sys.env("GITHUB_USERNAME"),
         sys.env("GITHUB_TOKEN")
     )
 
