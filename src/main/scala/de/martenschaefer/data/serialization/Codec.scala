@@ -3,12 +3,13 @@ package de.martenschaefer.data.serialization
 import scala.collection.mutable.{ Buffer, ListBuffer }
 import cats._
 import cats.data._
+import shapeless3.deriving.{ K0, Labelling }
+import de.martenschaefer.data.registry.Registry
 import de.martenschaefer.data.serialization.Element._
 import de.martenschaefer.data.serialization.ElementError._
-import de.martenschaefer.data.serialization.codec.{ ArrayCodec, EitherCodec, KeyDispatchCodec, OptionCodec, PrimitiveCodec, RecordCodec, UnitCodec }
-import de.martenschaefer.data.registry.Registry
-import de.martenschaefer.data.util.Either._
+import de.martenschaefer.data.serialization.codec.{ ArrayCodec, DerivedCodec, EitherCodec, KeyDispatchCodec, OptionCodec, PrimitiveCodec, RecordCodec, UnitCodec }
 import de.martenschaefer.data.util.{ Either, Lifecycle }
+import de.martenschaefer.data.util.Either._
 
 /**
  * Can be used for errors when encoding or decoding.
@@ -377,6 +378,11 @@ object Codec {
     def unit[T](value: () => T) = new UnitCodec(Right(value))
 
     /**
+     * Instance of {@code Codec} for {@code Unit}.
+     */
+    given Codec[Unit] = Codec.unit(())
+
+    /**
      * Instance of {@code Codec} for {@code Int}.
      */
     given Codec[Int] = new PrimitiveCodec(IntElement(_), _ match {
@@ -484,6 +490,17 @@ object Codec {
      * @tparam T Type of the object in the {@code List}. Has to have a {@code Codec} as well.
      */
     given[T: Codec]: Codec[List[T]] = ArrayCodec[T]
+
+    /**
+     * Can be used to derive an instance of {@code Codec} for product types, like case classes.
+     *
+     * @param inst Context parameter used for derivation
+     * @param labelling Context parameter used for derivation
+     * @tparam A The type that the instance will be derived for
+     * @return The derived {@code Codec}
+     */
+    inline def derived[A](using inst: K0.ProductInstances[Codec, A], labelling: Labelling[A]): Codec[A] =
+        new DerivedCodec(inst, labelling)
 }
 
 trait IncompleteFieldCodec[T](val fieldName: String) extends Codec[T] {

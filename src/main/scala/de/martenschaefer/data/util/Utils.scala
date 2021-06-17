@@ -1,5 +1,6 @@
 package de.martenschaefer.data.util
 
+import java.util.Locale
 import de.martenschaefer.data.serialization.{ Element, ElementError, ElementNode }
 
 object Utils {
@@ -27,4 +28,7 @@ object Utils {
 
     def withPrependedPath(list: Vector[ElementError], prependedPath: String): Vector[ElementError] = withPrependedPath(
         list, ElementNode.Name(prependedPath))
+
+    def toSnakeCase(string: String): String =
+        string.flatMap(c => if (c.isUpper || c.isDigit) s"_${c.toLower}" else c.toString).dropWhile(_ == '_')
 }

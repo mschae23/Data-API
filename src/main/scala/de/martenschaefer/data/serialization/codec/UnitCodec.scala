@@ -8,7 +8,7 @@ import de.martenschaefer.data.util.Either._
 import de.martenschaefer.data.util.{ Either, Lifecycle }
 
 class UnitCodec[T](val value: Either[T, () => T], val lifecycle: Lifecycle = Lifecycle.Stable) extends Codec[T] {
-    override def encodeElement(value: T): Result[Element] = Right(ObjectElement(ListMap()))
+    override def encodeElement(value: T): Result[Element] = Right(ObjectElement(ListMap.empty))
 
     override def decodeElement(element: Element): Result[T] = Right(this.value.get(v => v)(v => v()))
 }

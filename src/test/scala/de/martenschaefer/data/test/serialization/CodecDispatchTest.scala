@@ -39,6 +39,16 @@ class CodecDispatchTest extends UnitSpec, BeforeAndAfterAll {
         given Codec[Feature2] = Codec[String].fieldOf("name").xmap(Feature2(_))(_.name)
     }
 
+    case class Feature3() extends Feature { // case object doesn't work for some reason
+        override def getCodec: Codec[Feature3] = Codec[Feature3]
+
+        override def getString: String = "Some string"
+    }
+
+    object Feature3 {
+        given Codec[Feature3] = Codec.unit(Feature3())
+    }
+
     object Feature {
         given Codec[Feature] = Registry[Codec[_ <: Feature]].dispatch(_.getCodec, c => c)
     }
@@ -48,6 +58,7 @@ class CodecDispatchTest extends UnitSpec, BeforeAndAfterAll {
 
         Codec[Feature1].register(Identifier("test", "feature1"))
         Codec[Feature2].register(Identifier("test", "feature2"))
+        Codec[Feature3].register(Identifier("test", "feature3"))
     }
 
     "Dispatched Codecs" should "correctly encode objects (1)" in {
@@ -65,6 +76,14 @@ class CodecDispatchTest extends UnitSpec, BeforeAndAfterAll {
             "type" -> StringElement("test:feature2")
         )))) {
             Codec[Feature].encodeElement(Feature2("Feature Name"))
+        }
+    }
+
+    they should "correctly encode objects (3, unit codec)" in {
+        assertResult(Right(ObjectElement(Map(
+            "type" -> StringElement("test:feature3")
+        )))) {
+            Codec[Feature].encodeElement(Feature3())
         }
     }
 
@@ -99,6 +118,16 @@ class CodecDispatchTest extends UnitSpec, BeforeAndAfterAll {
         ))
 
         assertResult(Right(Feature2("Something"))) {
+            Codec[Feature].decodeElement(featureElement)
+        }
+    }
+
+    they should "correctly decode elements (4, unit codec)" in {
+        val featureElement = ObjectElement(Map(
+            "type" -> StringElement("test:feature3")
+        ))
+
+        assertResult(Right(Feature3())) {
             Codec[Feature].decodeElement(featureElement)
         }
     }
