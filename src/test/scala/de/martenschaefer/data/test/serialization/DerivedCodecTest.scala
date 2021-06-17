@@ -139,4 +139,19 @@ class DerivedCodecTest extends UnitSpec {
             Codec[Test2].decodeElement(testElement)
         }
     }
+
+    it should "have Lifecycle.Stable by default" in {
+        assertResult(Lifecycle.Stable)(Codec[Test5].lifecycle)
+    }
+
+    it should "inherit its lifecycle from its fields" in {
+        assertResult(Lifecycle.Deprecated(3)) {
+            Codec.record {
+                val test1 = Codec[String].fieldOf("test_1").forGetter[Test1](_.test1)
+                val test2 = Codec[Int].deprecated(3).fieldOf("test_2").forGetter[Test1](_.test2)
+
+                Codec.build(Test1(test1.get, test2.get))
+            }.lifecycle
+        }
+    }
 }

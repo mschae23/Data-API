@@ -499,8 +499,8 @@ object Codec {
      * @tparam A The type that the instance will be derived for
      * @return The derived {@code Codec}
      */
-    inline def derived[A](using inst: K0.ProductInstances[Codec, A], labelling: Labelling[A]): Codec[A] =
-        new DerivedCodec(inst, labelling)
+    inline def derived[A](using inst: K0.ProductGeneric[A], labelling: Labelling[A]): Codec[A] =
+        new DerivedCodec
 }
 
 trait IncompleteFieldCodec[T](val fieldName: String) extends Codec[T] {

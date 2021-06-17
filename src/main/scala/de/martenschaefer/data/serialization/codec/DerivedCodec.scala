@@ -7,7 +7,7 @@ import de.martenschaefer.data.util.{ Lifecycle, Utils }
 import de.martenschaefer.data.util.Either._
 import shapeless3.deriving.{ K0, Labelling }
 
-class DerivedCodec[A](inst: K0.ProductInstances[Codec, A], labelling: Labelling[A]) extends Codec[A] {
+class DerivedCodec[A](using inst: K0.ProductInstances[Codec, A], labelling: Labelling[A]) extends Codec[A] {
     override def encodeElement(value: A): Result[Element] =
         if (labelling.elemLabels.isEmpty)
             Right(ObjectElement(ListMap.empty))
@@ -54,5 +54,17 @@ class DerivedCodec[A](inst: K0.ProductInstances[Codec, A], labelling: Labelling[
         case _ => Left(Vector(ElementError.NotAnObject(element, List())))
     }
 
-    override val lifecycle: Lifecycle = Lifecycle.Experimental
+    private type LifecycleAcc = (Lifecycle, Int)
+
+    override val lifecycle: Lifecycle = inst.unfold[LifecycleAcc]((Lifecycle.Stable, labelling.elemLabels.size))(
+        [t] => (acc: LifecycleAcc, codec: Codec[t]) => {
+        val (lifecycle, fields) = acc
+        val last = fields < 2
+        val option: Option[t] = if (last) scala.None else Some(null.asInstanceOf[t])
+
+        ((lifecycle + codec.lifecycle, fields - 1), option)
+    }) match {
+        case ((lifecycle, _), scala.None) => lifecycle
+        case _ => throw new IllegalStateException()
+    }
 }
