@@ -64,7 +64,6 @@ class DerivedCodec[A](using inst: K0.ProductInstances[Codec, A], labelling: Labe
 
         ((lifecycle + codec.lifecycle, fields - 1), option)
     }) match {
-        case ((lifecycle, _), scala.None) => lifecycle
-        case _ => throw new IllegalStateException()
+        case ((lifecycle, _), _) => lifecycle
     }
 }

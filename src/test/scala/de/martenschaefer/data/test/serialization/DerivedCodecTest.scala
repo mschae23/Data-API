@@ -146,12 +146,17 @@ class DerivedCodecTest extends UnitSpec {
 
     it should "inherit its lifecycle from its fields" in {
         assertResult(Lifecycle.Deprecated(3)) {
-            Codec.record {
-                val test1 = Codec[String].fieldOf("test_1").forGetter[Test1](_.test1)
-                val test2 = Codec[Int].deprecated(3).fieldOf("test_2").forGetter[Test1](_.test2)
+            given Codec[Int] = Codec.given_Codec_Int.deprecated(3)
 
-                Codec.build(Test1(test1.get, test2.get))
-            }.lifecycle
+            case class Test(val test1: String, test2: Int) derives Codec
+
+            Codec[Test].lifecycle
         }
+    }
+
+    it should "work with case classes that have no fields" in {
+        case class Test() derives Codec
+
+        assertResult(Lifecycle.Stable)(Codec[Test].lifecycle)
     }
 }
