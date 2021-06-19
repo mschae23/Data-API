@@ -13,12 +13,7 @@ jobs:
         uses: olafurpg/setup-scala@v10
         with:
           java-version: "adopt@1.16"
-      - name: Build
-        run: sbt -v -Dfile.encoding=UTF-8 compile
-        env:
-          GITHUB_USERNAME: ${{ github.actor }}
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      - name: Test
+      - name: Build and Test
         run: sbt -v -Dfile.encoding=UTF-8 test
         env:
           GITHUB_USERNAME: ${{ github.actor }}

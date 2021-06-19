@@ -58,12 +58,12 @@ class DerivedCodec[A](using inst: K0.ProductInstances[Codec, A], labelling: Labe
 
     override val lifecycle: Lifecycle = inst.unfold[LifecycleAcc]((Lifecycle.Stable, labelling.elemLabels.size))(
         [t] => (acc: LifecycleAcc, codec: Codec[t]) => {
-        val (lifecycle, fields) = acc
-        val last = fields < 2
-        val option: Option[t] = if (last) scala.None else Some(null.asInstanceOf[t])
+            val (lifecycle, fields) = acc
+            val last = fields < 2
+            val option: Option[t] = if (last) scala.None else Some(null.asInstanceOf[t])
 
-        ((lifecycle + codec.lifecycle, fields - 1), option)
-    }) match {
+            ((lifecycle + codec.lifecycle, fields - 1), option)
+        }) match {
         case ((lifecycle, _), _) => lifecycle
     }
 }
