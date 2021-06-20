@@ -16,7 +16,7 @@ object PropertiesCodecs {
                 case Element.ObjectElement(map) =>
                     this.encodeObject(properties, map, "")
 
-                case _ => return Left(Vector(ElementError.NotAnObject(element, List())))
+                case _ => return Left(Vector(RecordParseError.NotAnObject(element, List())))
             }
 
             val writer = new StringWriter()
@@ -74,7 +74,7 @@ object PropertiesCodecs {
                         case Element.ObjectElement(map) =>
                             element = Element.ObjectElement(this.updateMap(map, path, value))
 
-                        case _ => return Left(Vector(ElementError.NotAnObject(element, List())))
+                        case _ => return Left(Vector(RecordParseError.NotAnObject(element, List())))
                     }
                 }
             }

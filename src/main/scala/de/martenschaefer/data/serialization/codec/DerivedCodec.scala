@@ -1,7 +1,7 @@
 package de.martenschaefer.data.serialization.codec
 
 import scala.collection.immutable.ListMap
-import de.martenschaefer.data.serialization.{ Codec, Element, ElementError, ElementNode, Result }
+import de.martenschaefer.data.serialization.{ Codec, Element, ElementError, ElementNode, RecordParseError, Result }
 import de.martenschaefer.data.serialization.Element._
 import de.martenschaefer.data.util.{ Lifecycle, Utils }
 import de.martenschaefer.data.util.Either._
@@ -43,7 +43,7 @@ class DerivedCodec[A](using inst: K0.ProductInstances[Codec, A], labelling: Labe
                         if (errors.isEmpty) Some(value) else scala.None)
 
                     case Left(errors2) => if (fieldElement == None) ((elemLabels.tail, errors.appended(
-                        ElementError.MissingKey(element, List(ElementNode.Name(label))))), none) else
+                        RecordParseError.MissingKey(element, List(ElementNode.Name(label))))), none) else
                         ((elemLabels.tail, errors.appendedAll(errors2.map(_.withPrependedPath(label)))), none)
                 }
             }) match {
@@ -51,7 +51,7 @@ class DerivedCodec[A](using inst: K0.ProductInstances[Codec, A], labelling: Labe
                 case (_, Some(value)) => Right(value)
             }
 
-        case _ => Left(Vector(ElementError.NotAnObject(element, List())))
+        case _ => Left(Vector(RecordParseError.NotAnObject(element, List())))
     }
 
     private type LifecycleAcc = (Lifecycle, Int)

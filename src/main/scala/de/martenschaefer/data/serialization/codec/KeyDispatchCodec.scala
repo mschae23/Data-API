@@ -2,7 +2,7 @@ package de.martenschaefer.data.serialization.codec
 
 import scala.collection.immutable.ListMap
 import de.martenschaefer.data.serialization.Element._
-import de.martenschaefer.data.serialization.{ Codec, Element, ElementError, ElementNode, Result }
+import de.martenschaefer.data.serialization.{ Codec, Element, ElementError, ElementNode, RecordParseError, Result }
 import de.martenschaefer.data.util.Either._
 import de.martenschaefer.data.util.{ Either, Lifecycle }
 
@@ -36,16 +36,19 @@ class KeyDispatchCodec[K: Codec, V](val typeKey: String = "type",
     override def decodeElement(element: Element): Result[V] = {
         val decodedKey = element match {
             case ObjectElement(map) => map.get(this.typeKey).map(Right(_)).getOrElse(
-                Left(Vector(ElementError.MissingKey(element, List(ElementNode.Name(this.typeKey))))))
-            case _ => Left(Vector(ElementError.NotAnObject(element, List())))
+                Left(Vector(RecordParseError.MissingKey(element, List(ElementNode.Name(this.typeKey))))))
+            case _ => Left(Vector(RecordParseError.NotAnObject(element, List())))
         }
 
         decodedKey.flatMap(keyElement => Codec[K].decodeElement(keyElement).mapLeft(_.map(_.withPrependedPath(this.typeKey))))
-            .flatMap(key => this.codec(key).decodeElement(element).flatOrElse(this.codec(key).decodeElement(element match {
-                case ObjectElement(map) => map.get(this.valueKey).getOrElse(
-                    return Left(Vector(ElementError.MissingKey(element, List(ElementNode.Name(this.valueKey))))))
-                case _ => return Left(Vector(ElementError.NotAnObject(element, List())))
-            }).mapLeft(_.map(_.withPrependedPath(this.valueKey)))))
+            .flatMap(key => this.codec(key).decodeElement(element) match {
+                case Left(errors) => this.codec(key).decodeElement(element match {
+                    case ObjectElement(map) => map.get(this.valueKey).getOrElse(return Left(errors))
+                    case _ => return Left(Vector(RecordParseError.NotAnObject(element, List())))
+                }).mapLeft(_.map(_.withPrependedPath(this.valueKey)))
+
+                case result => result
+            })
     }
 }
 

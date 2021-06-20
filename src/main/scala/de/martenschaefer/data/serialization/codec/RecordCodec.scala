@@ -2,8 +2,8 @@ package de.martenschaefer.data.serialization.codec
 
 import scala.collection.immutable.ListMap
 import de.martenschaefer.data.serialization.Element._
-import de.martenschaefer.data.serialization.ElementError._
-import de.martenschaefer.data.serialization.{ Codec, Element, ElementError, ElementNode, FieldCodec, Result }
+import de.martenschaefer.data.serialization.RecordParseError._
+import de.martenschaefer.data.serialization.{ Codec, Element, ElementError, ElementNode, FieldCodec, RecordParseError, Result }
 import de.martenschaefer.data.util.Either._
 import de.martenschaefer.data.util.Lifecycle
 
@@ -46,7 +46,7 @@ class RecordCodec[T](fields: List[FieldCodec[_, T]], creator: (FieldCodec[_, T] 
                     Left(errors)
             }
 
-            case _ => Left(Vector(ElementError.NotAnObject(element, List())))
+            case _ => Left(Vector(RecordParseError.NotAnObject(element, List())))
         }
 
     override val lifecycle: Lifecycle =

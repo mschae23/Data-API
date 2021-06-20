@@ -1,8 +1,8 @@
 package de.martenschaefer.data.test.serialization
 
-import de.martenschaefer.data.serialization.{ Codec, ElementNode }
+import de.martenschaefer.data.serialization.{ Codec, ElementError, ElementNode }
 import de.martenschaefer.data.serialization.Element._
-import de.martenschaefer.data.serialization.ElementError._
+import de.martenschaefer.data.serialization.RecordParseError._
 import de.martenschaefer.data.test.UnitSpec
 import de.martenschaefer.data.util.{ Either, Lifecycle }
 import de.martenschaefer.data.util.Either._

@@ -1,12 +1,11 @@
 package de.martenschaefer.data.test.serialization
 
-import de.martenschaefer.data.serialization.{ Codec, ElementNode }
+import de.martenschaefer.data.serialization.{ Codec, EitherError, ElementError, ElementNode }
 import de.martenschaefer.data.serialization.Element._
-import de.martenschaefer.data.serialization.ElementError._
+import de.martenschaefer.data.serialization.RecordParseError._
 import de.martenschaefer.data.test.UnitSpec
 import de.martenschaefer.data.util.{ Either, Lifecycle }
 import de.martenschaefer.data.util.Either._
-import de.martenschaefer.data.test.UnitSpec
 
 class DerivedCodecTest extends UnitSpec {
     case class Test1(val test1: String, test2: Int) derives Codec
@@ -14,6 +13,8 @@ class DerivedCodecTest extends UnitSpec {
     case class Test2(val testValue: Boolean, val testObject: Test1) derives Codec
 
     case class Test3(val testObject2: Test1, val floatingPointNumber: Float) derives Codec
+
+    private given EitherError = EitherError(path => s"$path is neither Test2 nor Test3")
 
     case class Test4(val some: Either[Test2, Test3]) derives Codec
 

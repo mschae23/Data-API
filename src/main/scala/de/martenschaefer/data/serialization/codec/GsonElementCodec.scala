@@ -4,7 +4,7 @@ import scala.jdk.CollectionConverters.{ IterableHasAsScala, SetHasAsScala }
 import com.google.gson.internal.LazilyParsedNumber
 import com.google.gson.{ JsonArray, JsonElement, JsonNull, JsonObject, JsonPrimitive }
 import de.martenschaefer.data.serialization.Element._
-import de.martenschaefer.data.serialization.{ Codec, Element, ElementError, ElementNode, Result }
+import de.martenschaefer.data.serialization.{ Codec, Element, ElementError, ElementNode, ParseError, RecordParseError, Result }
 import de.martenschaefer.data.util.Either._
 import de.martenschaefer.data.util.{ Either, Lifecycle, Utils }
 
@@ -18,7 +18,7 @@ object GsonElementCodec extends Codec[JsonElement] {
                 case l: Long => LongElement(l.longValue())
                 case f: Float => FloatElement(f.floatValue())
                 case d: Double => DoubleElement(d.doubleValue())
-                case n => return Left(Vector(ElementError.ParseError(s"Unknown number object: $n", List())))
+                case n => return Left(Vector(ParseError(s"Unknown number object: $n", List())))
             }
             case p if p.isBoolean => BooleanElement(p.getAsBoolean)
             case p if p.isString => StringElement(p.getAsString)

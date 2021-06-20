@@ -2,7 +2,7 @@ package de.martenschaefer.data.serialization.codec
 
 import cats.syntax.traverse.toTraverseOps
 import de.martenschaefer.data.serialization.Element._
-import de.martenschaefer.data.serialization.{ Codec, Element, ElementError, ElementNode, Result }
+import de.martenschaefer.data.serialization.{ Codec, Element, ElementError, ElementNode, RecordParseError, Result }
 import de.martenschaefer.data.util.Either._
 import de.martenschaefer.data.util.Lifecycle
 
@@ -41,7 +41,7 @@ class ArrayCodec[T: Codec] extends Codec[List[T]] {
             else
                 Left(errors)
 
-        case _ => Left(Vector(ElementError.NotAnArray(element, List())))
+        case _ => Left(Vector(RecordParseError.NotAnArray(element, List())))
     }
 
     override val lifecycle: Lifecycle = Codec[T].lifecycle

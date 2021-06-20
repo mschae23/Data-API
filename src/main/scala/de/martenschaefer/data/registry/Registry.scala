@@ -1,6 +1,6 @@
 package de.martenschaefer.data.registry
 
-import de.martenschaefer.data.serialization.{ Codec, Element, ElementError, Result }
+import de.martenschaefer.data.serialization.{ Codec, Element, ElementError, ElementNode, RecordParseError, Result, ValidationError }
 import de.martenschaefer.data.serialization.codec.RegistryElementCodec
 import de.martenschaefer.data.util.Either._
 import de.martenschaefer.data.util.{ Identifier, Lifecycle }
@@ -92,12 +92,11 @@ trait Registry[T](override val lifecycle: Lifecycle) extends Codec[T] {
 
     override def encodeElement(value: T): Result[Element] =
         Codec[Identifier].encodeElement(this.getId(value).getOrElse(
-            return Left(Vector(ElementError.ValidationError(path =>
-                s"$path: Unknown registry element", Element.StringElement(value.toString), List())))))
+            return Left(Vector(Registry.UnknownRegistryElementError(value, List())))))
 
     override def decodeElement(element: Element): Result[T] = {
         Codec[Identifier].decodeElement(element) match {
-            case Right(id) => this.get(id).map(Right(_)).getOrElse(Left(Vector(ElementError.ValidationError(path =>
+            case Right(id) => this.get(id).map(Right(_)).getOrElse(Left(Vector(RecordParseError.ValidationParseError(path =>
                 s"$path: Unknown registry ID", element, List()))))
             case Left(errors) => Left(errors)
         }
@@ -116,4 +115,12 @@ object Registry {
     extension[T] (t: T)(using registry: Registry[_ >: T])
         def register(id: Identifier) =
             registry.register(id, t)
+
+    case class UnknownRegistryElementError[T](val element: T, override val path: List[ElementNode]) extends ElementError(path) {
+        override def getDescription(path: String): String =
+            s"$path: Unknown registry element: $element"
+
+        override def withPrependedPath(prependedPath: ElementNode): ElementError =
+            UnknownRegistryElementError(this.element, prependedPath :: this.path)
+    }
 }

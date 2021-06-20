@@ -1,7 +1,7 @@
 package de.martenschaefer.data.util
 
 import java.util.Locale
-import de.martenschaefer.data.serialization.{ Element, ElementError, ElementNode }
+import de.martenschaefer.data.serialization.{ Element, ElementError, ElementNode, RecordParseError }
 
 object Utils {
     def parsePrimitive(value: String): Element = value.toIntOption match {

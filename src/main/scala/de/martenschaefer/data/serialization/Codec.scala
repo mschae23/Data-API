@@ -6,7 +6,7 @@ import cats.data._
 import shapeless3.deriving.{ K0, Labelling }
 import de.martenschaefer.data.registry.Registry
 import de.martenschaefer.data.serialization.Element._
-import de.martenschaefer.data.serialization.ElementError._
+import de.martenschaefer.data.serialization.RecordParseError._
 import de.martenschaefer.data.serialization.codec.{ AlternativeCodec, ArrayCodec, DerivedCodec, EitherCodec, KeyDispatchCodec, OptionCodec, PrimitiveCodec, RecordCodec, UnitCodec }
 import de.martenschaefer.data.util.{ Either, Lifecycle }
 import de.martenschaefer.data.util.Either._
@@ -526,13 +526,12 @@ object Codec {
     /**
      * Instance of {@code Codec} for {@code Either[L, R]}.
      *
-     * Uses a default error message with almost no information.
-     *
      * @see The {@code Codec.either} methods
+     * @param error {@code EitherError} object with the error message.
      * @tparam L Type of the {@code Left} object. Has to have a {@code Codec} as well.
      * @tparam R Type of the {@code Right} object. Has to have a {@code Codec} as well.
      */
-    given[L: Codec, R: Codec]: Codec[Either[L, R]] = EitherCodec[L, R](path => s"$path: Doesn't fit either")
+    given[L: Codec, R: Codec](using error: EitherError): Codec[Either[L, R]] = EitherCodec[L, R](error.message)
 
     /**
      * Instance of {@code Codec} for {@code List[T}}.
@@ -598,7 +597,7 @@ trait IncompleteFieldCodec[T](val fieldName: String) extends Codec[T] {
                     self.decodeElement(map.get(self.fieldName).getOrElse(return Left(Vector(MissingKey(element,
                         List(ElementNode.Name(self.fieldName))))))).mapBoth(_.map(_.withPrependedPath(self.fieldName)))(to)
 
-                case _ => Left(Vector(ElementError.NotAnObject(element, List())))
+                case _ => Left(Vector(NotAnObject(element, List())))
             }
 
             override val lifecycle: Lifecycle = self.lifecycle

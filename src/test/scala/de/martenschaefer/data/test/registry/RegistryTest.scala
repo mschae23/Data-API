@@ -2,7 +2,7 @@ package de.martenschaefer.data.test.registry
 
 import de.martenschaefer.data.registry.Registry
 import de.martenschaefer.data.registry.impl.SimpleRegistry
-import de.martenschaefer.data.serialization.{ Codec, Element, ElementError, ElementNode }
+import de.martenschaefer.data.serialization.{ Codec, Element, ElementError, RecordParseError, ElementNode }
 import de.martenschaefer.data.test.UnitSpec
 import de.martenschaefer.data.util._
 import de.martenschaefer.data.util.Either._
@@ -80,7 +80,7 @@ class RegistryTest extends UnitSpec {
 
     it should "decode objects not in the registry correctly" in {
         intCodec.decodeElement(Element.StringElement("test:nine")) shouldBe
-            Left(Vector(ElementError.NotAnInt(Element.StringElement("test:nine"), List())))
+            Left(Vector(RecordParseError.NotAnInt(Element.StringElement("test:nine"), List())))
 
         intCodec.decodeElement(Element.IntElement(9)) shouldBe Right(9)
     }
