@@ -187,6 +187,58 @@ class CodecTest extends UnitSpec {
         }
     }
 
+    it should "have working orElse methods" in {
+        case class Test(val a: String, b: String = "Hello")
+
+        given Codec[Test] = Codec.record {
+            val a = Codec[String].fieldOf("a").forGetter[Test](_.a)
+            val b = Codec[String].orElse("Hello").fieldOf("b").forGetter[Test](_.b)
+
+            Codec.build(Test(a.get, b.get))
+        }
+
+        Codec[Test].encodeElement(Test("aaaa", "b test")) shouldBe Right(ObjectElement(Map(
+            "a" -> StringElement("aaaa"),
+            "b" -> StringElement("b test")
+        )))
+
+        Codec[Test].encodeElement(Test("aaaa")) shouldBe Right(ObjectElement(Map(
+            "a" -> StringElement("aaaa"),
+            "b" -> StringElement("Hello")
+        )))
+
+        Codec[Test].decodeElement(ObjectElement(Map(
+            "a" -> StringElement("aaaa"),
+            "b" -> StringElement("b test")
+        ))) shouldBe Right(Test("aaaa", "b test"))
+
+        Codec[Test].decodeElement(ObjectElement(Map(
+            "a" -> StringElement("aaaa")
+        ))) shouldBe Right(Test("aaaa"))
+    }
+
+    it should "have working flatOrElse methods" in {
+        case class Test(val a: String, b: String)
+
+        given Codec[Test] = Codec.derived[Test].flatOrElse(Codec[Test1].xmap(test1 => Test(test1.test1, test1.test2.toString))(
+            test => Test1(test.a, test.b.toInt)))
+
+        Codec[Test].encodeElement(Test("aaaa", "5")) shouldBe Right(ObjectElement(Map(
+            "a" -> StringElement("aaaa"),
+            "b" -> StringElement("5")
+        )))
+
+        Codec[Test].decodeElement(ObjectElement(Map(
+            "a" -> StringElement("aaaa"),
+            "b" -> StringElement("b test")
+        ))) shouldBe Right(Test("aaaa", "b test"))
+
+        Codec[Test].decodeElement(ObjectElement(Map(
+            "test_1" -> StringElement("aaaaaa"),
+            "test_2" -> IntElement(7)
+        ))) shouldBe Right(Test("aaaaaa", "7"))
+    }
+
     it should "have Lifecycle.Stable by default" in {
         assertResult(Lifecycle.Stable)(Codec[Test5].lifecycle)
     }

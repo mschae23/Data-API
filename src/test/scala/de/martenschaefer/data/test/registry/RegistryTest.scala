@@ -2,8 +2,10 @@ package de.martenschaefer.data.test.registry
 
 import de.martenschaefer.data.registry.Registry
 import de.martenschaefer.data.registry.impl.SimpleRegistry
+import de.martenschaefer.data.serialization.{ Codec, Element, ElementError, ElementNode }
 import de.martenschaefer.data.test.UnitSpec
-import de.martenschaefer.data.util.Identifier
+import de.martenschaefer.data.util._
+import de.martenschaefer.data.util.Either._
 import Registry.register
 
 class RegistryTest extends UnitSpec {
@@ -50,5 +52,36 @@ class RegistryTest extends UnitSpec {
         5.register(id)
 
         assertResult(Some(id))(Registry[Int].getId(5))
+    }
+
+    val intCodec = Registry[Int].createCodec(Codec.given_Codec_Int) // Codec[Int] refers to the registry
+
+    "A RegistryElementCodec" should "encode objects in the registry correctly" in {
+        val id = Identifier("test", "six")
+
+        6.register(id)
+
+        intCodec.encodeElement(6) shouldBe Right(Element.StringElement("test:six"))
+    }
+
+    it should "encode objects not in the registry correctly" in {
+        intCodec.encodeElement(7) shouldBe Right(Element.IntElement(7))
+    }
+
+    it should "decode objects in the registry correctly" in {
+        val id = Identifier("test", "eight")
+
+        8.register(id)
+
+        intCodec.decodeElement(Element.StringElement("test:eight")) shouldBe Right(8)
+
+        intCodec.decodeElement(Element.IntElement(8)) shouldBe Right(8)
+    }
+
+    it should "decode objects not in the registry correctly" in {
+        intCodec.decodeElement(Element.StringElement("test:nine")) shouldBe
+            Left(Vector(ElementError.NotAnInt(Element.StringElement("test:nine"), List())))
+
+        intCodec.decodeElement(Element.IntElement(9)) shouldBe Right(9)
     }
 }

@@ -1,6 +1,7 @@
 package de.martenschaefer.data.registry
 
 import de.martenschaefer.data.serialization.{ Codec, Element, ElementError, Result }
+import de.martenschaefer.data.serialization.codec.RegistryElementCodec
 import de.martenschaefer.data.util.Either._
 import de.martenschaefer.data.util.{ Identifier, Lifecycle }
 
@@ -82,9 +83,17 @@ trait Registry[T](override val lifecycle: Lifecycle) extends Codec[T] {
      */
     def getName: Identifier
 
+    /**
+     * Creates a {@link Codec} that can encode and decode values either by registry ID or with the element {@code Codec}.
+     * @param elementCodec The {@code Codec} to use when an object is not in the registry.
+     * @return The created {@code Codec}.
+     */
+    def createCodec(elementCodec: Codec[T]): Codec[T] = new RegistryElementCodec[T](this, elementCodec)
+
     override def encodeElement(value: T): Result[Element] =
         Codec[Identifier].encodeElement(this.getId(value).getOrElse(
-            throw new IllegalArgumentException(s"Unknown registry element: $value")))
+            return Left(Vector(ElementError.ValidationError(path =>
+                s"$path: Unknown registry element", Element.StringElement(value.toString), List())))))
 
     override def decodeElement(element: Element): Result[T] = {
         Codec[Identifier].decodeElement(element) match {

@@ -7,7 +7,7 @@ import shapeless3.deriving.{ K0, Labelling }
 import de.martenschaefer.data.registry.Registry
 import de.martenschaefer.data.serialization.Element._
 import de.martenschaefer.data.serialization.ElementError._
-import de.martenschaefer.data.serialization.codec.{ ArrayCodec, DerivedCodec, EitherCodec, KeyDispatchCodec, OptionCodec, PrimitiveCodec, RecordCodec, UnitCodec }
+import de.martenschaefer.data.serialization.codec.{ AlternativeCodec, ArrayCodec, DerivedCodec, EitherCodec, KeyDispatchCodec, OptionCodec, PrimitiveCodec, RecordCodec, UnitCodec }
 import de.martenschaefer.data.util.{ Either, Lifecycle }
 import de.martenschaefer.data.util.Either._
 
@@ -132,6 +132,14 @@ trait Codec[T] extends AbstractCodec[T, Element, Result, Result] {
      */
     def xmap[B](to: T => B)(from: B => T): Codec[B] = Invariant[Codec].imap(this)(to)(from)
 
+    /**
+     * Creates a {@code Codec} for a new type that uses this one.
+     *
+     * @param to   Function that turns an object of type {@code T} to an object of the new type, or a list of errors.
+     * @param from Function that turns an object of the new type back to an object of type {@code T}.
+     * @tparam B The new type.
+     * @return The created {@code Codec}
+     */
     def flatXmap[B](to: (T, Element) => Result[B])(from: B => T): Codec[B] = new Codec[B] {
         def encodeElement(value: B): Result[Element] =
             self.encodeElement(from(value))
@@ -141,6 +149,48 @@ trait Codec[T] extends AbstractCodec[T, Element, Result, Result] {
 
         override val lifecycle: Lifecycle = self.lifecycle
     }
+
+    /**
+     * Creates a new {@code Codec} that returns a default value if decoding fails.
+     *
+     * @param alternative The default value
+     * @return The created {@code Codec}
+     */
+    def orElse(alternative: T): Codec[T] = new Codec {
+        override def encodeElement(value: T): Result[Element] = self.encodeElement(value)
+
+        override def decodeElement(element: Element): Result[T] = self.decodeElement(element) match {
+            case Left(_) => Right(alternative)
+            case result => result
+        }
+
+        override val lifecycle: Lifecycle = self.lifecycle
+    }
+
+    /**
+     * Creates a new {@code Codec} that returns a default value if decoding fails.
+     *
+     * @param alternative The default value
+     * @return The created {@code Codec}
+     */
+    def orElse(alternative: () => T): Codec[T] = new Codec {
+        override def encodeElement(value: T): Result[Element] = self.encodeElement(value)
+
+        override def decodeElement(element: Element): Result[T] = self.decodeElement(element) match {
+            case Left(_) => Right(alternative())
+            case result => result
+        }
+
+        override val lifecycle: Lifecycle = self.lifecycle
+    }
+
+    /**
+     * Creates a new {@code Codec} that tries another {@code Codec} as well if encoding or decoding fails.
+     *
+     * @param alternative The alternative {@code Codec}
+     * @return The created {@code Codec}
+     */
+    def flatOrElse(alternative: Codec[T]): Codec[T] = new AlternativeCodec(this, alternative)
 
     /**
      * Creates a {@code Codec} for objects that have a type,
