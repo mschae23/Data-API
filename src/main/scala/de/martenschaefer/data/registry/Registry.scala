@@ -92,12 +92,12 @@ trait Registry[T](override val lifecycle: Lifecycle) extends Codec[T] {
 
     override def encodeElement(value: T): Result[Element] =
         Codec[Identifier].encodeElement(this.getId(value).getOrElse(
-            return Left(Vector(Registry.UnknownRegistryElementError(value, List())))))
+            return Left(Vector(Registry.UnknownRegistryElementError(value)))))
 
     override def decodeElement(element: Element): Result[T] = {
         Codec[Identifier].decodeElement(element) match {
-            case Right(id) => this.get(id).map(Right(_)).getOrElse(Left(Vector(RecordParseError.ValidationParseError(path =>
-                s"$path: Unknown registry ID", element, List()))))
+            case Right(id) => this.get(id).map(Right(_)).getOrElse(Left(Vector(
+                Registry.UnknownRegistryIdError(element))))
             case Left(errors) => Left(errors)
         }
     }
@@ -116,11 +116,19 @@ object Registry {
         def register(id: Identifier) =
             registry.register(id, t)
 
-    case class UnknownRegistryElementError[T](val element: T, override val path: List[ElementNode]) extends ElementError(path) {
+    case class UnknownRegistryElementError[T](val element: T, override val path: List[ElementNode] = List()) extends ElementError(path) {
         override def getDescription(path: String): String =
             s"$path: Unknown registry element: $element"
 
         override def withPrependedPath(prependedPath: ElementNode): ElementError =
             UnknownRegistryElementError(this.element, prependedPath :: this.path)
+    }
+
+    case class UnknownRegistryIdError(val element: Element, override val path: List[ElementNode] = List()) extends ElementError(path) {
+        override def getDescription(path: String): String =
+            s"$path: Unknown registry ID: $element"
+
+        override def withPrependedPath(prependedPath: ElementNode): ElementError =
+            UnknownRegistryIdError(this.element, prependedPath :: this.path)
     }
 }
