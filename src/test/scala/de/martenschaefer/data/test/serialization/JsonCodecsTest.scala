@@ -2,7 +2,7 @@ package de.martenschaefer.data.test.serialization
 
 import de.martenschaefer.data.serialization.{ Codec, JsonCodecs }
 import de.martenschaefer.data.test.UnitSpec
-import de.martenschaefer.data.util.Either._
+import de.martenschaefer.data.util.DataResult._
 import JsonCodecs.given
 
 class JsonCodecsTest extends UnitSpec {
@@ -28,20 +28,20 @@ class JsonCodecsTest extends UnitSpec {
     val prettyTestJson = "{\n  \"a\": true,\n  \"test_object\": {\n    \"name\": \"Test Name\",\n    \"something\": 123\n  }\n}"
 
     "The JSON codec" should "encode objects correctly" in {
-        assertResult(Right(testJson))(Codec[Test2].encode(testValue))
+        assertResult(Success(testJson))(Codec[Test2].encode(testValue))
     }
 
     it should "encode objects correctly (pretty)" in {
-        assertResult(Right(prettyTestJson)) {
+        assertResult(Success(prettyTestJson)) {
             Codec[Test2].encode(testValue)(using JsonCodecs.prettyJsonEncoder)
         }
     }
 
     it should "decode an object correctly" in {
-        assertResult(Right(testValue))(Codec[Test2].decode(testJson))
+        assertResult(Success(testValue))(Codec[Test2].decode(testJson))
     }
 
     it should "decode a pretty object correctly" in {
-        assertResult(Right(testValue))(Codec[Test2].decode(prettyTestJson))
+        assertResult(Success(testValue))(Codec[Test2].decode(prettyTestJson))
     }
 }

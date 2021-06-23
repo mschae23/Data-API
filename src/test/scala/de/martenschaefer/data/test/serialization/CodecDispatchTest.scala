@@ -7,8 +7,8 @@ import de.martenschaefer.data.serialization.{ Codec, ElementNode }
 import de.martenschaefer.data.serialization.Element._
 import de.martenschaefer.data.serialization.ElementError._
 import de.martenschaefer.data.test.UnitSpec
-import de.martenschaefer.data.util.{ Either, Identifier, Lifecycle }
-import de.martenschaefer.data.util.Either._
+import de.martenschaefer.data.util.{ DataResult, Identifier, Lifecycle }
+import de.martenschaefer.data.util.DataResult._
 
 class CodecDispatchTest extends UnitSpec, BeforeAndAfterAll {
     trait Feature {
@@ -62,27 +62,27 @@ class CodecDispatchTest extends UnitSpec, BeforeAndAfterAll {
     }
 
     "Dispatched Codecs" should "correctly encode objects (1)" in {
-        assertResult(Right(ObjectElement(Map(
+        assertResult(Success(ObjectElement(Map(
             "value" -> StringElement("Hello!"),
             "type" -> StringElement("test:feature1")
-        )))) {
+        )), Lifecycle.Experimental)) {
             Codec[Feature].encodeElement(Feature1("Hello!"))
         }
     }
 
     they should "correctly encode objects (2)" in {
-        assertResult(Right(ObjectElement(Map(
+        assertResult(Success(ObjectElement(Map(
             "name" -> StringElement("Feature Name"),
             "type" -> StringElement("test:feature2")
-        )))) {
+        )), Lifecycle.Experimental)) {
             Codec[Feature].encodeElement(Feature2("Feature Name"))
         }
     }
 
     they should "correctly encode objects (3, unit codec)" in {
-        assertResult(Right(ObjectElement(Map(
+        assertResult(Success(ObjectElement(Map(
             "type" -> StringElement("test:feature3")
-        )))) {
+        )), Lifecycle.Experimental)) {
             Codec[Feature].encodeElement(Feature3())
         }
     }
@@ -93,7 +93,7 @@ class CodecDispatchTest extends UnitSpec, BeforeAndAfterAll {
             "type" -> StringElement("test:feature1")
         ))
 
-        assertResult(Right(Feature1("Test Test"))) {
+        assertResult(Success(Feature1("Test Test"), Lifecycle.Experimental)) {
             Codec[Feature].decodeElement(featureElement)
         }
     }
@@ -106,7 +106,7 @@ class CodecDispatchTest extends UnitSpec, BeforeAndAfterAll {
             "type" -> StringElement("test:feature2")
         ))
 
-        assertResult(Right(Feature2("Feature 2"))) {
+        assertResult(Success(Feature2("Feature 2"), Lifecycle.Experimental)) {
             Codec[Feature].decodeElement(featureElement)
         }
     }
@@ -117,7 +117,7 @@ class CodecDispatchTest extends UnitSpec, BeforeAndAfterAll {
             "type" -> StringElement("test:feature2")
         ))
 
-        assertResult(Right(Feature2("Something"))) {
+        assertResult(Success(Feature2("Something"), Lifecycle.Experimental)) {
             Codec[Feature].decodeElement(featureElement)
         }
     }
@@ -127,7 +127,7 @@ class CodecDispatchTest extends UnitSpec, BeforeAndAfterAll {
             "type" -> StringElement("test:feature3")
         ))
 
-        assertResult(Right(Feature3())) {
+        assertResult(Success(Feature3(), Lifecycle.Experimental)) {
             Codec[Feature].decodeElement(featureElement)
         }
     }

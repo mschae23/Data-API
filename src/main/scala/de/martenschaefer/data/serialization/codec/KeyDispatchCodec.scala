@@ -3,8 +3,8 @@ package de.martenschaefer.data.serialization.codec
 import scala.collection.immutable.ListMap
 import de.martenschaefer.data.serialization.Element._
 import de.martenschaefer.data.serialization.{ Codec, Element, ElementError, ElementNode, RecordParseError, Result }
-import de.martenschaefer.data.util.Either._
-import de.martenschaefer.data.util.{ Either, Lifecycle }
+import de.martenschaefer.data.util.DataResult._
+import de.martenschaefer.data.util.{ DataResult, Lifecycle }
 
 class KeyDispatchCodec[K: Codec, V](val typeKey: String = "type",
                                     val valueKey: String = "value",
@@ -13,41 +13,41 @@ class KeyDispatchCodec[K: Codec, V](val typeKey: String = "type",
                                     override val lifecycle: Lifecycle) extends Codec[V] {
     override def encodeElement(value: V): Result[Element] =
         KeyDispatchCodec.getEncoder(this.typeFunction, this.codec, value) match {
-            case Right(encoder) =>
-                Right(ObjectElement(encoder.encodeElement(value) match {
-                    case Right(ObjectElement(map)) => map.updated(this.typeKey, this.encodeType(value) match {
-                        case Right(key) => key
-                        case result => return result
-                    })
-                    case Right(element) => ListMap(this.valueKey -> element, this.typeKey -> (this.encodeType(value) match {
-                        case Right(key) => key
-                        case result => return result
+            case Success(encoder, l) =>
+                Success(encoder.encodeElement(value) match {
+                    case Success(ObjectElement(map), l2) => (l + l2, map.updated(this.typeKey, this.encodeType(value) match {
+                        case Success(key, _) => key
+                        case Failure(errors, l3) => return Failure(errors, this.lifecycle + l + l2 + l3)
                     }))
-                    case result => return result
-                }))
-            case Left(errors) => Left(errors)
+                    case Success(element, l2) => (l + l2, ListMap(this.valueKey -> element, this.typeKey -> (this.encodeType(value) match {
+                        case Success(key, _) => key
+                        case Failure(errors, l3) => return Failure(errors, this.lifecycle + l + l2 + l3)
+                    })))
+                    case Failure(errors, l) => return Failure(errors, this.lifecycle + l)
+                }).flatMap(tuple => Success(ObjectElement(tuple._2), this.lifecycle + tuple._1))
+            case Failure(errors, l) => Failure(errors, this.lifecycle + l)
         }
 
     private def encodeType(value: V): Result[Element] = Codec[K].encodeElement(this.typeFunction(value) match {
-        case Right(key) => key
-        case Left(errors) => return Left(errors)
+        case Success(key, _) => key
+        case Failure(errors, l) => return Failure(errors, this.lifecycle + l)
     })
 
     override def decodeElement(element: Element): Result[V] = {
         val decodedKey = element match {
-            case ObjectElement(map) => map.get(this.typeKey).map(Right(_)).getOrElse(
-                Left(Vector(RecordParseError.MissingKey(element, List(ElementNode.Name(this.typeKey))))))
-            case _ => Left(Vector(RecordParseError.NotAnObject(element, List())))
+            case ObjectElement(map) => map.get(this.typeKey).map(Success(_, this.lifecycle)).getOrElse(
+                Failure(Vector(RecordParseError.MissingKey(element, List(ElementNode.Name(this.typeKey)))), this.lifecycle))
+            case _ => Failure(Vector(RecordParseError.NotAnObject(element, List())), this.lifecycle)
         }
 
         decodedKey.flatMap(keyElement => Codec[K].decodeElement(keyElement).mapLeft(_.map(_.withPrependedPath(this.typeKey))))
             .flatMap(key => this.codec(key).decodeElement(element) match {
-                case Left(errors) => this.codec(key).decodeElement(element match {
-                    case ObjectElement(map) => map.get(this.valueKey).getOrElse(return Left(errors))
-                    case _ => return Left(Vector(RecordParseError.NotAnObject(element, List())))
-                }).mapLeft(_.map(_.withPrependedPath(this.valueKey)))
+                case Failure(errors, l) => this.codec(key).decodeElement(element match {
+                    case ObjectElement(map) => map.get(this.valueKey).getOrElse(return Failure(errors, this.lifecycle + l))
+                    case _ => return Failure(Vector(RecordParseError.NotAnObject(element, List())), this.lifecycle + l)
+                }).addLifecycle(this.lifecycle).mapLeft(_.map(_.withPrependedPath(this.valueKey)))
 
-                case result => result
+                case result => result.addLifecycle(this.lifecycle)
             })
     }
 }

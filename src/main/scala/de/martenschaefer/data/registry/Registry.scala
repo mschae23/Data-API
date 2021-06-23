@@ -2,7 +2,7 @@ package de.martenschaefer.data.registry
 
 import de.martenschaefer.data.serialization.{ Codec, Element, ElementError, ElementNode, RecordParseError, Result, ValidationError }
 import de.martenschaefer.data.serialization.codec.RegistryElementCodec
-import de.martenschaefer.data.util.Either._
+import de.martenschaefer.data.util.DataResult._
 import de.martenschaefer.data.util.{ Identifier, Lifecycle }
 
 trait Registry[T](override val lifecycle: Lifecycle) extends Codec[T] {
@@ -92,13 +92,13 @@ trait Registry[T](override val lifecycle: Lifecycle) extends Codec[T] {
 
     override def encodeElement(value: T): Result[Element] =
         Codec[Identifier].encodeElement(this.getId(value).getOrElse(
-            return Left(Vector(Registry.UnknownRegistryElementError(value)))))
+            return Failure(Vector(Registry.UnknownRegistryElementError(value)), this.lifecycle)))
 
     override def decodeElement(element: Element): Result[T] = {
         Codec[Identifier].decodeElement(element) match {
-            case Right(id) => this.get(id).map(Right(_)).getOrElse(Left(Vector(
-                Registry.UnknownRegistryIdError(element))))
-            case Left(errors) => Left(errors)
+            case Success(id, l) => this.get(id).map(Success(_, this.lifecycle + l)).getOrElse(Failure(Vector(
+                Registry.UnknownRegistryIdError(element)), this.lifecycle + l))
+            case Failure(errors, l) => Failure(errors, this.lifecycle + l)
         }
     }
 }

@@ -4,11 +4,11 @@ import scala.collection.immutable.ListMap
 import de.martenschaefer.data.serialization.Element._
 import de.martenschaefer.data.serialization.ElementError._
 import de.martenschaefer.data.serialization.{ Codec, Element, ElementError, ElementNode, FieldCodec, Result }
-import de.martenschaefer.data.util.Either._
-import de.martenschaefer.data.util.{ Either, Lifecycle }
+import de.martenschaefer.data.util.DataResult._
+import de.martenschaefer.data.util.{ DataResult, Lifecycle }
 
 class UnitCodec[T](val value: Either[T, () => T], val lifecycle: Lifecycle = Lifecycle.Stable) extends Codec[T] {
-    override def encodeElement(value: T): Result[Element] = Right(ObjectElement(ListMap.empty))
+    override def encodeElement(value: T): Result[Element] = Success(ObjectElement(ListMap.empty), this.lifecycle)
 
-    override def decodeElement(element: Element): Result[T] = Right(this.value.get(v => v)(v => v()))
+    override def decodeElement(element: Element): Result[T] = Success(this.value.fold(v => v, v => v()), this.lifecycle)
 }

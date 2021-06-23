@@ -4,8 +4,8 @@ import de.martenschaefer.data.serialization.{ Codec, ElementError, ElementNode }
 import de.martenschaefer.data.serialization.Element._
 import de.martenschaefer.data.serialization.RecordParseError._
 import de.martenschaefer.data.test.UnitSpec
-import de.martenschaefer.data.util.{ Either, Lifecycle }
-import de.martenschaefer.data.util.Either._
+import de.martenschaefer.data.util.{ DataResult, Lifecycle }
+import de.martenschaefer.data.util.DataResult._
 
 class CodecTest extends UnitSpec {
     case class Test1(val test1: String, test2: Int)
@@ -107,13 +107,13 @@ class CodecTest extends UnitSpec {
     val test6Object = Test6(4L, List(Test1("a", 5), Test1("b", 99)))
 
     "A Codec" should "encode an object to an Element" in {
-        assertResult(Right(test5Element)) {
+        assertResult(Success(test5Element)) {
             Codec[Test5].encodeElement(test5Object)
         }
     }
 
     it should "encode an object to an Element (2)" in {
-        assertResult(Right(ObjectElement(Map(
+        assertResult(Success(ObjectElement(Map(
             "test" -> DoubleElement(17.3)
         )))) {
             case class Test(val test: Double)
@@ -123,25 +123,25 @@ class CodecTest extends UnitSpec {
     }
 
     it should "encode an object to an Element (3)" in {
-        assertResult(Right(test6Element)) {
+        assertResult(Success(test6Element)) {
             Codec[Test6].encodeElement(test6Object)
         }
     }
 
     it should "decode an Element to an object (Option.Some, Right)" in {
-        assertResult(Right(test5Object)) {
+        assertResult(Success(test5Object)) {
             Codec[Test5].decodeElement(test5Element)
         }
     }
 
     it should "decode an Element to an object (Option.Some, Left)" in {
-        assertResult(Right(test5Object2)) {
+        assertResult(Success(test5Object2)) {
             Codec[Test5].decodeElement(test5Element2)
         }
     }
 
     it should "decode an Element to an object (Option.None)" in {
-        assertResult(Right(test5ObjectNone)) {
+        assertResult(Success(test5ObjectNone)) {
             Codec[Test5].decodeElement(ObjectElement(Map(
                 "lifecycle" -> StringElement("stable")
             )))
@@ -149,7 +149,7 @@ class CodecTest extends UnitSpec {
     }
 
     it should "decode an Element to an object (4)" in {
-        assertResult(Right(test6Object)) {
+        assertResult(Success(test6Object)) {
             Codec[Test6].decodeElement(test6Element)
         }
     }
@@ -163,7 +163,7 @@ class CodecTest extends UnitSpec {
             ))
         ))
 
-        assertResult(Left(Vector(
+        assertResult(Failure(Vector(
             NotABoolean(FloatElement(5.5f), List(ElementNode.Name("test_value"))),
             NotAString(BooleanElement(false), List(ElementNode.Name("test_object"), ElementNode.Name("test_1")))
         ))) {
@@ -178,7 +178,7 @@ class CodecTest extends UnitSpec {
             ))
         ))
 
-        assertResult(Left(Vector(
+        assertResult(Failure(Vector(
             MissingKey(testElement, List(ElementNode.Name("test_value"))),
             MissingKey(ObjectElement(Map("test_2" -> IntElement(8))), List(ElementNode.Name("test_object"),
                 ElementNode.Name("test_1")))
@@ -197,12 +197,12 @@ class CodecTest extends UnitSpec {
             Codec.build(Test(a.get, b.get))
         }
 
-        Codec[Test].encodeElement(Test("aaaa", "b test")) shouldBe Right(ObjectElement(Map(
+        Codec[Test].encodeElement(Test("aaaa", "b test")) shouldBe Success(ObjectElement(Map(
             "a" -> StringElement("aaaa"),
             "b" -> StringElement("b test")
         )))
 
-        Codec[Test].encodeElement(Test("aaaa")) shouldBe Right(ObjectElement(Map(
+        Codec[Test].encodeElement(Test("aaaa")) shouldBe Success(ObjectElement(Map(
             "a" -> StringElement("aaaa"),
             "b" -> StringElement("Hello")
         )))
@@ -210,11 +210,11 @@ class CodecTest extends UnitSpec {
         Codec[Test].decodeElement(ObjectElement(Map(
             "a" -> StringElement("aaaa"),
             "b" -> StringElement("b test")
-        ))) shouldBe Right(Test("aaaa", "b test"))
+        ))) shouldBe Success(Test("aaaa", "b test"))
 
         Codec[Test].decodeElement(ObjectElement(Map(
             "a" -> StringElement("aaaa")
-        ))) shouldBe Right(Test("aaaa"))
+        ))) shouldBe Success(Test("aaaa"))
     }
 
     it should "have working flatOrElse methods" in {
@@ -223,7 +223,7 @@ class CodecTest extends UnitSpec {
         given Codec[Test] = Codec.derived[Test].flatOrElse(Codec[Test1].xmap(test1 => Test(test1.test1, test1.test2.toString))(
             test => Test1(test.a, test.b.toInt)))
 
-        Codec[Test].encodeElement(Test("aaaa", "5")) shouldBe Right(ObjectElement(Map(
+        Codec[Test].encodeElement(Test("aaaa", "5")) shouldBe Success(ObjectElement(Map(
             "a" -> StringElement("aaaa"),
             "b" -> StringElement("5")
         )))
@@ -231,12 +231,12 @@ class CodecTest extends UnitSpec {
         Codec[Test].decodeElement(ObjectElement(Map(
             "a" -> StringElement("aaaa"),
             "b" -> StringElement("b test")
-        ))) shouldBe Right(Test("aaaa", "b test"))
+        ))) shouldBe Success(Test("aaaa", "b test"))
 
         Codec[Test].decodeElement(ObjectElement(Map(
             "test_1" -> StringElement("aaaaaa"),
             "test_2" -> IntElement(7)
-        ))) shouldBe Right(Test("aaaaaa", "7"))
+        ))) shouldBe Success(Test("aaaaaa", "7"))
     }
 
     it should "have Lifecycle.Stable by default" in {

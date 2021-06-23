@@ -8,8 +8,8 @@ import de.martenschaefer.data.registry.Registry
 import de.martenschaefer.data.serialization.Element._
 import de.martenschaefer.data.serialization.RecordParseError._
 import de.martenschaefer.data.serialization.codec.{ AlternativeCodec, ArrayCodec, DerivedCodec, EitherCodec, KeyDispatchCodec, OptionCodec, PrimitiveCodec, RecordCodec, UnitCodec }
-import de.martenschaefer.data.util.{ Either, Lifecycle }
-import de.martenschaefer.data.util.Either._
+import de.martenschaefer.data.util.{ DataResult, Lifecycle }
+import de.martenschaefer.data.util.DataResult._
 
 /**
  * Can be used for errors when encoding or decoding.
@@ -17,7 +17,7 @@ import de.martenschaefer.data.util.Either._
  *
  * @tparam T Type of object in case of no errors.
  */
-type Result[T] = Either[Vector[ElementError], T]
+type Result[T] = DataResult[Vector[ElementError], T]
 
 /**
  * Can encode objects of type {@code A} to objects of type {@code B}.
@@ -140,12 +140,12 @@ trait Codec[T] extends AbstractCodec[T, Element, Result, Result] {
      * @tparam B The new type.
      * @return The created {@code Codec}
      */
-    def flatXmap[B](to: (T, Element) => Result[B])(from: B => T): Codec[B] = new Codec[B] {
+    def flatXmap[B](to: (T, Element) => Result[B])(from: B => Result[T]): Codec[B] = new Codec[B] {
         def encodeElement(value: B): Result[Element] =
-            self.encodeElement(from(value))
+            from(value).flatMapWithLifecycle((t, l) => self.encodeElement(t).addLifecycle(l))
 
         def decodeElement(element: Element): Result[B] =
-            self.decodeElement(element).flatMap(b => to(b, element))
+            self.decodeElement(element).flatMapWithLifecycle((b, l) => to(b, element).addLifecycle(l))
 
         override val lifecycle: Lifecycle = self.lifecycle
     }
@@ -160,7 +160,7 @@ trait Codec[T] extends AbstractCodec[T, Element, Result, Result] {
         override def encodeElement(value: T): Result[Element] = self.encodeElement(value)
 
         override def decodeElement(element: Element): Result[T] = self.decodeElement(element) match {
-            case Left(_) => Right(alternative)
+            case Failure(_, l) => Success(alternative, l)
             case result => result
         }
 
@@ -177,7 +177,7 @@ trait Codec[T] extends AbstractCodec[T, Element, Result, Result] {
         override def encodeElement(value: T): Result[Element] = self.encodeElement(value)
 
         override def decodeElement(element: Element): Result[T] = self.decodeElement(element) match {
-            case Left(_) => Right(alternative())
+            case Failure(_, l) => Success(alternative(), l)
             case result => result
         }
 
@@ -209,7 +209,7 @@ trait Codec[T] extends AbstractCodec[T, Element, Result, Result] {
      * @return The new {@code Codec}
      */
     def dispatch[B](typeKey: String, valueKey: String, typeFunction: B => T, codec: T => Codec[_ <: B], lifecycle: Lifecycle): Codec[B] =
-        new KeyDispatchCodec[T, B](typeKey, valueKey, b => Right(typeFunction(b)), codec, lifecycle)(using this)
+        new KeyDispatchCodec[T, B](typeKey, valueKey, b => Success(typeFunction(b), lifecycle), codec, lifecycle)(using this)
 
     /**
      * Creates a {@code Codec} for objects that have a type,
@@ -436,50 +436,50 @@ object Codec {
      * Instance of {@code Codec} for {@code Int}.
      */
     given Codec[Int] = new PrimitiveCodec(IntElement(_), _ match {
-        case IntElement(value) => Right(value)
-        case element => Left(Vector(NotAnInt(element, List())))
+        case IntElement(value) => Success(value)
+        case element => Failure(Vector(NotAnInt(element, List())))
     })
 
     /**
      * Instance of {@code Codec} for {@code Long}.
      */
     given Codec[Long] = new PrimitiveCodec(LongElement(_), _ match {
-        case IntElement(value) => Right(value.toLong)
-        case LongElement(value) => Right(value)
-        case element => Left(Vector(NotALong(element, List())))
+        case IntElement(value) => Success(value.toLong)
+        case LongElement(value) => Success(value)
+        case element => Failure(Vector(NotALong(element, List())))
     })
 
     /**
      * Instance of {@code Codec} for {@code Float}.
      */
     given Codec[Float] = new PrimitiveCodec(FloatElement(_), _ match {
-        case FloatElement(value) => Right(value)
-        case element => Left(Vector(NotAFloat(element, List())))
+        case FloatElement(value) => Success(value)
+        case element => Failure(Vector(NotAFloat(element, List())))
     })
 
     /**
      * Instance of {@code Codec} for {@code Double}.
      */
     given Codec[Double] = new PrimitiveCodec(DoubleElement(_), _ match {
-        case FloatElement(value) => Right(value.toDouble)
-        case DoubleElement(value) => Right(value)
-        case element => Left(Vector(NotADouble(element, List())))
+        case FloatElement(value) => Success(value.toDouble)
+        case DoubleElement(value) => Success(value)
+        case element => Failure(Vector(NotADouble(element, List())))
     })
 
     /**
      * Instance of {@code Codec} for {@code Boolean}.
      */
     given Codec[Boolean] = new PrimitiveCodec(BooleanElement(_), _ match {
-        case BooleanElement(value) => Right(value)
-        case element => Left(Vector(NotABoolean(element, List())))
+        case BooleanElement(value) => Success(value)
+        case element => Failure(Vector(NotABoolean(element, List())))
     })
 
     /**
      * Instance of {@code Codec} for {@code String}.
      */
     given Codec[String] = new PrimitiveCodec(StringElement(_), _ match {
-        case StringElement(value) => Right(value)
-        case element => Left(Vector(NotAString(element, List())))
+        case StringElement(value) => Success(value)
+        case element => Failure(Vector(NotAString(element, List())))
     })
 
     /**
@@ -594,10 +594,10 @@ trait IncompleteFieldCodec[T](val fieldName: String) extends Codec[T] {
 
             def decodeElement(element: Element): Result[B] = element match {
                 case Element.ObjectElement(map) =>
-                    self.decodeElement(map.get(self.fieldName).getOrElse(return Left(Vector(MissingKey(element,
-                        List(ElementNode.Name(self.fieldName))))))).mapBoth(_.map(_.withPrependedPath(self.fieldName)))(to)
+                    self.decodeElement(map.get(self.fieldName).getOrElse(return Failure(Vector(MissingKey(element,
+                        List(ElementNode.Name(self.fieldName)))), this.lifecycle))).mapBoth(_.map(_.withPrependedPath(self.fieldName)))(to)
 
-                case _ => Left(Vector(NotAnObject(element, List())))
+                case _ => Failure(Vector(NotAnObject(element, List())), this.lifecycle)
             }
 
             override val lifecycle: Lifecycle = self.lifecycle

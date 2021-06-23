@@ -3,8 +3,8 @@ package de.martenschaefer.data.serialization
 import com.google.gson.{ Gson, GsonBuilder, JsonElement, JsonParser }
 import de.martenschaefer.data.serialization.codec.GsonElementCodec
 import de.martenschaefer.data.serialization.{ Decoder, Element, Encoder }
-import de.martenschaefer.data.util.Either
-import de.martenschaefer.data.util.Either._
+import de.martenschaefer.data.util.DataResult
+import de.martenschaefer.data.util.DataResult._
 
 object JsonCodecs {
     private val gson = new GsonBuilder().create()

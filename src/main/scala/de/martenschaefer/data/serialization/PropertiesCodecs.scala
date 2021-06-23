@@ -4,8 +4,8 @@ import java.io.{ StringReader, StringWriter }
 import java.util.Properties
 import scala.annotation.tailrec
 import scala.jdk.CollectionConverters
-import de.martenschaefer.data.util.Either._
-import de.martenschaefer.data.util.{ Either, Utils }
+import de.martenschaefer.data.util.DataResult._
+import de.martenschaefer.data.util.{ DataResult, Utils }
 
 object PropertiesCodecs {
     given propertiesEncoder: Encoder[Element, String] with {
@@ -16,12 +16,12 @@ object PropertiesCodecs {
                 case Element.ObjectElement(map) =>
                     this.encodeObject(properties, map, "")
 
-                case _ => return Left(Vector(RecordParseError.NotAnObject(element, List())))
+                case _ => return Failure(Vector(RecordParseError.NotAnObject(element, List())))
             }
 
             val writer = new StringWriter()
             properties.store(writer, null)
-            Right(writer.toString())
+            Success(writer.toString())
         }
 
         def encodeObject(properties: Properties, map: Map[String, Element], namePrefix: String): Unit = {
@@ -74,12 +74,12 @@ object PropertiesCodecs {
                         case Element.ObjectElement(map) =>
                             element = Element.ObjectElement(this.updateMap(map, path, value))
 
-                        case _ => return Left(Vector(RecordParseError.NotAnObject(element, List())))
+                        case _ => return Failure(Vector(RecordParseError.NotAnObject(element, List())))
                     }
                 }
             }
 
-            Right[Vector[ElementError], Element](element)
+            Success[Vector[ElementError], Element](element)
         }
 
         def updateMap(map: Map[String, Element], path: List[String], value: String): Map[String, Element] = {

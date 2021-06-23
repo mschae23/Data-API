@@ -4,18 +4,19 @@ import scala.collection.immutable.ListMap
 import de.martenschaefer.data.serialization.Element._
 import de.martenschaefer.data.serialization.RecordParseError._
 import de.martenschaefer.data.serialization.{ Codec, Element, ElementError, ElementNode, FieldCodec, RecordParseError, Result }
-import de.martenschaefer.data.util.Either._
+import de.martenschaefer.data.util.DataResult._
 import de.martenschaefer.data.util.Lifecycle
 
 class RecordCodec[T](fields: List[FieldCodec[_, T]], creator: (FieldCodec[_, T] => _) ?=> T) extends Codec[T] {
     def encodeElement(value: T): Result[Element] =
-        Right(fields.map(field => (field.fieldName, field.encodeElement(field.getter(value))))).flatMap(fields =>
-            fields.foldLeft(Vector[ElementError]())((list, fieldTuple) => fieldTuple._2 match {
-                case Left(errors) => list.appendedAll(errors.map(_.withPrependedPath(fieldTuple._1)))
-                case Right(result) => list
+        Success(fields.map(field => (field.fieldName, field.encodeElement(field.getter(value))))).flatMap(fields =>
+            fields.foldLeft((Vector[ElementError](), Lifecycle.Stable))((acc, fieldTuple) => fieldTuple._2 match {
+                case Failure(errors, lifecycle) => (acc._1.appendedAll(errors.map(_.withPrependedPath(fieldTuple._1))),
+                    acc._2 + lifecycle)
+                case Success(result, lifecycle) => (acc._1, acc._2 + lifecycle)
             }) match {
-                case list if !list.isEmpty => Left(list)
-                case _ => Right(fields.map((fieldName, result) => (fieldName, result.getRight)))
+                case acc if !acc._1.isEmpty => Failure(acc._1, acc._2)
+                case acc => Success(fields.map((fieldName, result) => (fieldName, result.getRight)), acc._2)
             }
         ).map(fields => ObjectElement(ListMap.from(fields)))
 
@@ -24,29 +25,31 @@ class RecordCodec[T](fields: List[FieldCodec[_, T]], creator: (FieldCodec[_, T] 
             case Element.ObjectElement(map) => {
                 var fieldMap = Map[FieldCodec[_, T], Any]()
                 var errors = Vector[ElementError]()
+                var lifecycle = Lifecycle.Stable
 
                 for (fieldCodec <- fields) {
                     val field = map.get(fieldCodec.fieldName).getOrElse(Element.None)
                     val decoded = fieldCodec.decodeElement(field) match {
-                        case Right(value) => Right(value)
-                        case Left(_) if field == Element.None => Left(Vector(MissingKey(element, List())))
-                        case decoded => decoded
+                        case Failure(_, l) if field == Element.None => Failure(Vector(MissingKey(element, List())), l)
+                        case result => result
                     }
 
                     decoded match {
-                        case Right(value) => fieldMap = fieldMap.updated(fieldCodec, value)
-                        case Left(fieldErrors) => errors = errors.appendedAll(fieldErrors.map(_
+                        case Success(value, l) => fieldMap = fieldMap.updated(fieldCodec, value)
+                            lifecycle += l
+                        case Failure(fieldErrors, l) => errors = errors.appendedAll(fieldErrors.map(_
                           .withPrependedPath(fieldCodec.fieldName)))
+                            lifecycle += l
                     }
                 }
 
                 if (errors.isEmpty)
-                    Right(creator(using fieldCodec => fieldMap(fieldCodec)))
+                    Success(creator(using fieldCodec => fieldMap(fieldCodec)), lifecycle)
                 else
-                    Left(errors)
+                    Failure(errors, lifecycle)
             }
 
-            case _ => Left(Vector(RecordParseError.NotAnObject(element, List())))
+            case _ => Failure(Vector(RecordParseError.NotAnObject(element, List())), this.lifecycle)
         }
 
     override val lifecycle: Lifecycle =

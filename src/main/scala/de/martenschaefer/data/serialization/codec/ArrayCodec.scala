@@ -3,7 +3,7 @@ package de.martenschaefer.data.serialization.codec
 import cats.syntax.traverse.toTraverseOps
 import de.martenschaefer.data.serialization.Element._
 import de.martenschaefer.data.serialization.{ Codec, Element, ElementError, ElementNode, RecordParseError, Result }
-import de.martenschaefer.data.util.Either._
+import de.martenschaefer.data.util.DataResult._
 import de.martenschaefer.data.util.Lifecycle
 
 class ArrayCodec[T: Codec] extends Codec[List[T]] {
@@ -11,17 +11,19 @@ class ArrayCodec[T: Codec] extends Codec[List[T]] {
         val encodedValues = values.map(Codec[T].encodeElement(_))
 
         var errors = Vector[ElementError]()
+        var lifecycle = Lifecycle.Stable
 
         for (i <- 0 until encodedValues.size) encodedValues(i) match {
-            case Left(errorList) => errors = errors.appendedAll(errorList.map(_
+            case Failure(errorList, l) => errors = errors.appendedAll(errorList.map(_
                 .withPrependedPath(ElementNode.Index(i))))
-            case _ =>
+                lifecycle += l
+            case Success(_, l) => lifecycle += l
         }
 
         if (errors.isEmpty)
-            Right(ArrayElement(encodedValues.map(_.getRight)))
+            Success(ArrayElement(encodedValues.map(_.getRight)), lifecycle)
         else
-            Left(errors)
+            Failure(errors, lifecycle)
     }
 
     override def decodeElement(element: Element): Result[List[T]] = element match {
@@ -29,19 +31,21 @@ class ArrayCodec[T: Codec] extends Codec[List[T]] {
             val values = elements.map(Codec[T].decodeElement(_))
 
             var errors = Vector[ElementError]()
+            var lifecycle = Lifecycle.Stable
 
             for (i <- 0 until values.size) values(i) match {
-                case Left(errorList) => errors = errors.appendedAll(errorList.map(_
+                case Failure(errorList, l) => errors = errors.appendedAll(errorList.map(_
                     .withPrependedPath(ElementNode.Index(i))))
-                case _ =>
+                    lifecycle += l
+                case Success(_, l) => lifecycle += l
             }
 
             if (errors.isEmpty)
-                Right(values.map(_.getRight))
+                Success(values.map(_.getRight), lifecycle)
             else
-                Left(errors)
+                Failure(errors, lifecycle)
 
-        case _ => Left(Vector(RecordParseError.NotAnArray(element, List())))
+        case _ => Failure(Vector(RecordParseError.NotAnArray(element, List())), this.lifecycle)
     }
 
     override val lifecycle: Lifecycle = Codec[T].lifecycle

@@ -1,7 +1,7 @@
 package de.martenschaefer.data.util
 
 import de.martenschaefer.data.serialization.Codec
-import de.martenschaefer.data.util.Either._
+import de.martenschaefer.data.util.DataResult._
 
 enum Version extends PartiallyOrdered[Version] {
     case Simple(val version: Int)
