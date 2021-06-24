@@ -1,5 +1,7 @@
 package de.martenschaefer.data.registry
 
+import cats.syntax.all._
+import cats.effect.Sync
 import de.martenschaefer.data.serialization.{ Codec, Element, ElementError, ElementNode, RecordParseError, Result, ValidationError }
 import de.martenschaefer.data.serialization.codec.RegistryElementCodec
 import de.martenschaefer.data.util.DataResult._
@@ -94,6 +96,10 @@ trait Registry[T](override val lifecycle: Lifecycle) extends Codec[T] {
         Codec[Identifier].encodeElement(this.getId(value).getOrElse(
             return Failure(Vector(Registry.UnknownRegistryElementError(value)), this.lifecycle)))
 
+    override def encodeElementIO[F[_]: Sync](value: T): F[Result[Element]] =
+        Codec[Identifier].encodeElementIO(this.getId(value).getOrElse(
+            return Sync[F].pure(Failure(Vector(Registry.UnknownRegistryElementError(value)), this.lifecycle))))
+
     override def decodeElement(element: Element): Result[T] = {
         Codec[Identifier].decodeElement(element) match {
             case Success(id, l) => this.get(id).map(Success(_, this.lifecycle + l)).getOrElse(Failure(Vector(
@@ -101,6 +107,15 @@ trait Registry[T](override val lifecycle: Lifecycle) extends Codec[T] {
             case Failure(errors, l) => Failure(errors, this.lifecycle + l)
         }
     }
+
+    override def decodeElementIO[F[_]: Sync](element: Element): F[Result[T]] = for {
+        decodedId <- Codec[Identifier].decodeElementIO(element)
+        result <- decodedId match {
+            case Success(id, l) => Sync[F].delay(this.get(id).map(Success(_, this.lifecycle + l)).getOrElse(Failure(Vector(
+                Registry.UnknownRegistryIdError(element)), this.lifecycle + l)))
+            case Failure(errors, l) => Sync[F].pure(Failure(errors, this.lifecycle + l))
+        }
+    } yield result
 }
 
 object Registry {

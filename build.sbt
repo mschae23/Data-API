@@ -13,14 +13,14 @@ lazy val root = project
     .settings(
         name := "data-api",
         organization := "de.martenschaefer",
-        version := "3.0.0",
+        version := "3.1.0",
         homepage := Some(url("https://github.com/mschae23/Data-API")),
 
         scalaVersion := scala3Version,
 
         libraryDependencies ++= Seq(
             "org.typelevel" %% "cats-core" % "2.6.1",
-            // "org.typelevel" %% "cats-effect" % "3.1.1",
+            "org.typelevel" %% "cats-effect" % "3.1.1",
 
             "org.typelevel" %% "shapeless3-deriving" % "3.0.1",
 
