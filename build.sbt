@@ -13,7 +13,7 @@ lazy val root = project
     .settings(
         name := "data-api",
         organization := "de.martenschaefer",
-        version := "3.1.0",
+        version := "3.1.1",
         homepage := Some(url("https://github.com/mschae23/Data-API")),
 
         scalaVersion := scala3Version,
