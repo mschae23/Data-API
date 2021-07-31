@@ -9,7 +9,7 @@ import de.martenschaefer.data.util.Lifecycle
 
 class RecordCodec[T](fields: List[FieldCodec[_, T]], creator: (FieldCodec[_, T] => _) ?=> T) extends Codec[T] {
     def encodeElement(value: T): Result[Element] =
-        Success(fields.map(field => (field.fieldName, field.encodeElement(field.getter(value))))).flatMap(fields =>
+        Success(fields.map(field => (field.fieldName, field.getField(value).flatMap(t => field.encodeElement(t))))).flatMap(fields =>
             fields.foldLeft((Vector[ElementError](), Lifecycle.Stable))((acc, fieldTuple) => fieldTuple._2 match {
                 case Failure(errors, lifecycle) => (acc._1.appendedAll(errors.map(_.withPrependedPath(fieldTuple._1))),
                     acc._2 + lifecycle)

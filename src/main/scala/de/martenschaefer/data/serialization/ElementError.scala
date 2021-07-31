@@ -123,3 +123,10 @@ object EitherError {
 
     def message(using e: EitherError): String => String = e.message
 }
+
+case class NullElementError(override val path: List[ElementNode]) extends ElementError(path) {
+    override def getDescription(path: String): String = s"$path is null"
+
+    override def withPrependedPath(prependedPath: ElementNode): ElementError =
+        NullElementError(prependedPath :: this.path)
+}

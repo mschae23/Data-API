@@ -712,4 +712,13 @@ trait FieldCodec[T, B](val fieldName: String, val getter: B => T) extends Codec[
     def get(using context: FieldCodec[_, B] => _): T = context(this).asInstanceOf[T]
 
     def apply(using FieldCodec[_, B] => _): T = get
+
+    def getField(b: B): Result[T] = try {
+        getter(b) match {
+            case null => Failure(Vector(NullElementError(List.empty)))
+            case value => Success(value)
+        }
+    } catch {
+        case e: Exception => Failure(Vector(ValidationError(path => s"Exception thrown at $path: $e", List.empty)))
+    }
 }

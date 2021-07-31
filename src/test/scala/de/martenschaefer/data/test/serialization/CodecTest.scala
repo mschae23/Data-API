@@ -1,11 +1,11 @@
 package de.martenschaefer.data.test.serialization
 
-import de.martenschaefer.data.serialization.{ Codec, ElementError, ElementNode }
-import de.martenschaefer.data.serialization.Element._
-import de.martenschaefer.data.serialization.RecordParseError._
+import de.martenschaefer.data.serialization.{ Codec, ElementError, ElementNode, NullElementError }
+import de.martenschaefer.data.serialization.Element.*
+import de.martenschaefer.data.serialization.RecordParseError.*
 import de.martenschaefer.data.test.UnitSpec
 import de.martenschaefer.data.util.{ DataResult, Lifecycle }
-import de.martenschaefer.data.util.DataResult._
+import de.martenschaefer.data.util.DataResult.*
 
 class CodecTest extends UnitSpec {
     case class Test1(val test1: String, test2: Int)
@@ -184,6 +184,16 @@ class CodecTest extends UnitSpec {
                 ElementNode.Name("test_1")))
         ))) {
             Codec[Test2].decodeElement(testElement)
+        }
+    }
+
+    it should "return a null element error when decoding elements with null fields" in {
+        val testObject = Test3(null, 0.5f)
+
+        assertResult(Failure(Vector(
+            NullElementError(List(ElementNode.Name("test_object_2")))
+        ))) {
+            Codec[Test3].encodeElement(testObject)
         }
     }
 

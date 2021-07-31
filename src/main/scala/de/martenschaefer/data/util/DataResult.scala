@@ -150,17 +150,19 @@ enum DataResult[+L, +R](val lifecycle: Lifecycle) {
 }
 
 import scala.annotation.tailrec
-import cats.Monad
+import cats.{ ~>, Applicative, Monad, MonadError, Monoid, Parallel }
+import cats.arrow.FunctionK
+import cats.syntax.monoid._
 
 object DataResult {
-    given[L]: Monad[[R] =>> DataResult[L, R]] with {
+    given[L]: MonadError[[R] =>> DataResult[L, R], L] with {
         override def pure[R](value: R): DataResult[L, R] = Success(value)
 
         override def flatMap[R, R1](either: DataResult[L, R])(f: R => DataResult[L, R1]): DataResult[L, R1] = either.flatMap(f)
 
         override def tailRecM[A, B](a: A)(f: A => DataResult[L, Either[A, B]]): DataResult[L, B] = {
             @tailrec
-            def loop(aa: A): DataResult[L, B] = f(a) match {
+            def loop(aa: A): DataResult[L, B] = f(aa) match {
                 case Success(either, lifecycle) => either match {
                     case Left(a1) => loop(a1)
                     case Right(b) => Success(b, lifecycle)
@@ -170,6 +172,48 @@ object DataResult {
             }
 
             loop(a)
+        }
+
+        override def raiseError[A](e: L): DataResult[L, A] = Failure(e)
+
+        def handleErrorWith[A](fa: DataResult[L, A])(f: L => DataResult[L, A]): DataResult[L, A] = fa match {
+            case Failure(l, _) => f(l)
+            case result => result
+        }
+    }
+
+    given[L: Monoid]: Parallel[[R] =>> DataResult[L, R]] with {
+        override type F[R] = DataResult[L, R]
+
+        def parallel: F ~> F = new FunctionK {
+            def apply[A](fa: F[A]) = fa
+        }
+
+        def sequential: F ~> F = new FunctionK {
+            def apply[A](fa: F[A]) = fa
+        }
+
+        def applicative: Applicative[F] = new Applicative[F] {
+            override def ap[A, B](ff: F[A => B])(fa: F[A]): F[B] = ff match {
+                case Success(f, l) => fa match {
+                    case Success(a, l2) => Success(f(a), l + l2)
+                    case Failure(e, l2) => Failure(e, l + l2)
+                }
+                case Failure(e, l) => fa match {
+                    case Success(a, l2) => Failure(e, l + l2)
+                    case Failure(e2, l2) => Failure(e |+| e2, l + l2)
+                }
+            }
+
+            override def pure[A](a: A): F[A] = Success(a)
+        }
+
+        def monad: Monad[F] = new Monad[F] {
+            override def pure[A](a: A): F[A] = Success(a)
+
+            override def flatMap[A, B](fa: F[A])(f: A => F[B]): F[B] = fa.flatMap(f)
+
+            override def tailRecM[A, B](a: A)(f: A => F[Either[A, B]]): F[B] = Monad[F].tailRecM(a)(f)
         }
     }
 }
