@@ -9,17 +9,15 @@ object CommandBuilder {
 
     def build[T](builder: Context[T] ?=> Unit): Command[T] = new Command[T] {
         override def run(command: List[String]): Option[T] = {
-            val context = new Context[T](command, List.empty, List.empty)
+            val context = new Context[T](command, List.empty)
             builder(using context)
 
             val fallbackNextCommand = if (command.isEmpty) command else command.tail
 
             val subCommands = context.subCommands.reverse
-            val nextCommands = context.nextCommands.reverse
 
             for (i <- 0 until subCommands.length) {
-                val subCommand = subCommands(i)
-                val nextCommand = if (nextCommands.length > i) nextCommands(i) else fallbackNextCommand
+                val (subCommand, nextCommand) = subCommands(i)
 
                 subCommand.run(nextCommand) match {
                     case Some(commandResult) => return Some(commandResult)
@@ -31,9 +29,8 @@ object CommandBuilder {
         }
     }
 
-    def result[T](result: T)(using context: Context[T]): Unit = {
-        context.subCommands = createResultCommand(result) :: context.subCommands
-        context.nextCommands = List.empty :: context.nextCommands
+    def result[T](result: T, allowNonEmptyCommand: Boolean = true)(using context: Context[T]): Unit = {
+        context.subCommands ::= (createResultCommand(result), if (allowNonEmptyCommand) List.empty else context.command)
     }
 
     def argument[T, A](argument: Argument[A])(builder: A => Context[T] ?=> Unit)(using context: Context[T]): Unit = {
@@ -42,8 +39,7 @@ object CommandBuilder {
 
         argument.get(context.command(0)) match {
             case Some(value) => {
-                context.subCommands = build(builder(value)) :: context.subCommands
-                context.nextCommands = context.command.tail :: context.nextCommands
+                context.subCommands ::= (build(builder(value)), context.command.tail)
             }
 
             case _ => return;
@@ -61,11 +57,10 @@ object CommandBuilder {
             if (argument.get(commandPart).isDefined)
                 hasFlag = true
 
-        context.subCommands = build(builder(hasFlag)) :: context.subCommands
-        context.nextCommands = context.command :: context.nextCommands
+        context.subCommands ::= (build(builder(hasFlag)), context.command)
     }
 
-    def flag[T](flag: String, shortFlag: Option[Char] = None)(builder: Context[T] ?=> Unit)(using context: Context[T]): Unit = {
+    def literalFlag[T](flag: String, shortFlag: Option[Char] = None)(builder: Context[T] ?=> Unit)(using context: Context[T]): Unit = {
         if (context.command.length < 1)
             return;
 
@@ -77,15 +72,14 @@ object CommandBuilder {
                 hasFlag = true
 
         if (hasFlag) {
-            context.subCommands = build(builder) :: context.subCommands
-            context.nextCommands = context.command :: context.nextCommands
+            context.subCommands ::= (build(builder), context.command)
         }
     }
 
     def createResultCommand[T](result: T): Command[T] = new Command[T] {
-        override def run(command: List[String]): Option[T] = command match {
-            case head :: _ => None
-            case _ => Some(result)
+        override def run(command: List[String]): Option[T] = {
+            if (command.isEmpty) Some(result)
+            else None
         }
     }
 }
