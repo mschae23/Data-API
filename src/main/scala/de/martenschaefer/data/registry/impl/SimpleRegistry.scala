@@ -10,12 +10,12 @@ class SimpleRegistry[T](val name: Identifier, override val lifecycle: Lifecycle)
     private val elements = HashMap.empty[Identifier, T]
 
     override def register(id: Identifier, t: T) = {
-        if (contains(id)) throw new IllegalStateException(s"Attempted to register element ($id / $name) twice.")
+        if (contains(id)) throw new IllegalStateException(s"Attempted to register element ($name / $id) twice.")
         else elements.put(id, t)
     }
 
     override def set(id: Identifier, t: T) = {
-        if (!contains(id)) throw new IllegalStateException(s"Attempted to set value for unregistered element ($id / $name).")
+        if (!contains(id)) throw new IllegalStateException(s"Attempted to set value for unregistered element ($name / $id).")
         else elements.put(id, t)
     }
 

@@ -31,6 +31,6 @@ enum Element {
 
         case ArrayElement(values) => values.mkString("[", ", ", "]")
 
-        case ObjectElement(fields) => fields.mkString("Object(", ", ", ")")
+        case ObjectElement(fields) => fields.mkString("{ ", ", ", " }")
     }
 }

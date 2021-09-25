@@ -1,44 +1,38 @@
 val scala3Version = "3.0.1"
 
-credentials +=
-    Credentials(
-        "GitHub Package Registry",
-        "maven.pkg.github.com",
-        sys.env("GITHUB_USERNAME"),
-        sys.env("GITHUB_TOKEN")
-    )
-
 lazy val root = project
     .in(file("."))
     .settings(
         name := "data-api",
         organization := "de.martenschaefer",
-        version := "3.1.1",
-        homepage := Some(url("https://github.com/mschae23/Data-API")),
+        version := "3.2.0",
+        homepage := Some(url("https://github.com/mschae23/data-api")),
 
         scalaVersion := scala3Version,
 
         libraryDependencies ++= Seq(
             "org.typelevel" %% "cats-core" % "2.6.1",
-            "org.typelevel" %% "cats-effect" % "3.1.1",
+            "org.typelevel" %% "cats-effect" % "3.2.8",
 
             "org.typelevel" %% "shapeless3-deriving" % "3.0.1",
 
-            "com.google.code.gson" % "gson" % "2.8.7",
+            "com.google.code.gson" % "gson" % "2.8.8",
 
             "org.scalactic" %% "scalactic" % "3.2.9",
             "org.scalatest" %% "scalatest" % "3.2.9" % "test"
         ),
 
         resolvers ++= Seq(
-            "GitHub Package Registry (mschae23/Data-API)" at "https://maven.pkg.github.com/mschae23/Data-API",
+            "GitHub Package Registry (mschae23/Data-API)" at "https://maven.pkg.github.com/mschae23/data-api",
             Resolver.sonatypeRepo("releases"),
             Resolver.sonatypeRepo("snapshots")
         ),
 
-        publishTo := Some("GitHub Package Registry" at "https://maven.pkg.github.com/mschae23/Data-API"),
-        scmInfo := Some(ScmInfo(url("https://github.com/mschae23/Data-API"), "scm:git@github.com:mschae23/Data-API.git")),
+        publishTo := Some("GitHub Package Registry" at "https://maven.pkg.github.com/mschae23/data-api"),
+        scmInfo := Some(ScmInfo(url("https://github.com/mschae23/data-api"), "scm:git@github.com:mschae23/data-api.git")),
 
         publishMavenStyle := true,
         versionScheme := Some("semver-spec")
     )
+
+credentials += Credentials(Path.userHome / ".github" / ".credentials")
