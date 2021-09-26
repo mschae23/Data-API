@@ -15,8 +15,10 @@ object Identifier {
     def withDefaultNamespace(id: String, defaultNamespace: => String): Identifier = {
         val parts = id.split(SEPARATOR)
 
-        if (parts.length != 2)
-            parts(1) = defaultNamespace
+        if (parts.length > 2 || parts.length <= 0)
+            throw new IllegalArgumentException(id)
+        else if (parts.length == 1)
+            return Identifier(defaultNamespace, id)
 
         Identifier(parts(0), parts(1))
     }
