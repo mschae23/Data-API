@@ -101,7 +101,7 @@ trait Registry[T](override val lifecycle: Lifecycle) extends Codec[T] {
             return Sync[F].pure(Failure(Vector(Registry.UnknownRegistryElementError(value)), this.lifecycle))))
 
     override def decodeElement(element: Element): Result[T] = {
-        Codec[Identifier].decodeElement(element) match {
+        Identifier.createCodec(this.getName.namespace).decodeElement(element) match {
             case Success(id, l) => this.get(id).map(Success(_, this.lifecycle + l)).getOrElse(Failure(Vector(
                 Registry.UnknownRegistryIdError(element)), this.lifecycle + l))
             case Failure(errors, l) => Failure(errors, this.lifecycle + l)
@@ -109,7 +109,7 @@ trait Registry[T](override val lifecycle: Lifecycle) extends Codec[T] {
     }
 
     override def decodeElementIO[F[_]: Sync](element: Element): F[Result[T]] = for {
-        decodedId <- Codec[Identifier].decodeElementIO(element)
+        decodedId <- Identifier.createCodec(this.getName.namespace).decodeElementIO(element)
         result <- decodedId match {
             case Success(id, l) => Sync[F].delay(this.get(id).map(Success(_, this.lifecycle + l)).getOrElse(Failure(Vector(
                 Registry.UnknownRegistryIdError(element)), this.lifecycle + l)))
