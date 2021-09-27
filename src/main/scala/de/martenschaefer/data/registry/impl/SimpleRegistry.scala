@@ -38,4 +38,8 @@ class SimpleRegistry[T](val name: Identifier, override val lifecycle: Lifecycle)
     override def values: Predef.Map[Identifier, T] = elements.toMap
 
     override def getName: Identifier = this.name
+
+    override def getSuggestions(id: Identifier): List[Identifier] =
+        this.elements.filter(entry => entry._1.toString.startsWith(id.toString))
+            .toList.map(_._1)
 }

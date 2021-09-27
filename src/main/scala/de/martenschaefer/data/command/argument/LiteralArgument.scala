@@ -14,4 +14,15 @@ class LiteralArgument(val literal: String, val ignoreCase: Boolean = false) exte
             this.literal.equalsIgnoreCase(argument)
         else
             this.literal == argument
+
+    override def getSuggestions(argument: String): List[String] =
+        if (this.startsWith(argument))
+            List(this.literal)
+        else
+            List.empty
+
+    private def startsWith(argument: String): Boolean =
+        if (this.ignoreCase)
+            this.literal.toLowerCase.startsWith(argument.toLowerCase)
+        else this.literal.startsWith(argument)
 }

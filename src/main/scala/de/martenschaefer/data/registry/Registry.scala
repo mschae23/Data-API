@@ -1,11 +1,11 @@
 package de.martenschaefer.data.registry
 
-import cats.syntax.all._
-import cats.effect.Sync
-import de.martenschaefer.data.serialization.{ Codec, Element, ElementError, ElementNode, RecordParseError, Result, ValidationError }
 import de.martenschaefer.data.serialization.codec.RegistryElementCodec
-import de.martenschaefer.data.util.DataResult._
+import de.martenschaefer.data.serialization.{ Codec, Element, ElementError, ElementNode, RecordParseError, Result, ValidationError }
+import de.martenschaefer.data.util.DataResult.*
 import de.martenschaefer.data.util.{ Identifier, Lifecycle }
+import cats.effect.Sync
+import cats.syntax.all.*
 
 trait Registry[T](override val lifecycle: Lifecycle) extends Codec[T] {
     /**
@@ -86,7 +86,18 @@ trait Registry[T](override val lifecycle: Lifecycle) extends Codec[T] {
     def getName: Identifier
 
     /**
+     * Returns a list of {@link Identifier}s that start with the given {@code Identifier}.
+     *
+     * @param id the {@code Identifier} to suggest completions for
+     * @return the list of suggestions
+     */
+    def getSuggestions(id: Identifier): List[Identifier] =
+        this.values.filter(entry => entry._1.toString.startsWith(id.toString))
+            .toList.map(_._1)
+
+    /**
      * Creates a {@link Codec} that can encode and decode values either by registry ID or with the element {@code Codec}.
+     *
      * @param elementCodec The {@code Codec} to use when an object is not in the registry.
      * @return The created {@code Codec}.
      */
@@ -96,7 +107,7 @@ trait Registry[T](override val lifecycle: Lifecycle) extends Codec[T] {
         Codec[Identifier].encodeElement(this.getId(value).getOrElse(
             return Failure(Vector(Registry.UnknownRegistryElementError(value)), this.lifecycle)))
 
-    override def encodeElementIO[F[_]: Sync](value: T): F[Result[Element]] =
+    override def encodeElementIO[F[_] : Sync](value: T): F[Result[Element]] =
         Codec[Identifier].encodeElementIO(this.getId(value).getOrElse(
             return Sync[F].pure(Failure(Vector(Registry.UnknownRegistryElementError(value)), this.lifecycle))))
 
@@ -108,7 +119,7 @@ trait Registry[T](override val lifecycle: Lifecycle) extends Codec[T] {
         }
     }
 
-    override def decodeElementIO[F[_]: Sync](element: Element): F[Result[T]] = for {
+    override def decodeElementIO[F[_] : Sync](element: Element): F[Result[T]] = for {
         decodedId <- Identifier.createCodec(this.getName.namespace).decodeElementIO(element)
         result <- decodedId match {
             case Success(id, l) => Sync[F].delay(this.get(id).map(Success(_, this.lifecycle + l)).getOrElse(Failure(Vector(
