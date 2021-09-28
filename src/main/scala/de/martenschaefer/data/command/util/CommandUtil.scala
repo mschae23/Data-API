@@ -49,11 +49,13 @@ object CommandUtil {
         else
             command
 
-    def hasFlag(command: List[String], flag: Argument[Unit]): Boolean = {
-        for (commandPart <- command)
-            if (flag.get(commandPart).isDefined)
-                return true
-        false
+    type PosResult[T] = (T, Int, Int)
+
+    def hasArgument[A](command: List[String], flag: Argument[A]): PosResult[Boolean] = {
+        for (i <- 0 until command.length)
+            if (flag.get(command(i)).isDefined)
+                return (true, i, 1)
+        (false, 0, 0)
     }
 
     def hasFlags[K](command: List[String], flags: Map[K, Argument[Unit]]): Map[K, Boolean] = {
@@ -91,7 +93,7 @@ object CommandUtil {
         loop(command, flagList.head._2, flagList.tail)
     }
 
-    def getArgumentFlagResult[A](flagArgument: Argument[Unit], getter: String => Option[A], command: List[String]): Option[(A, Int, Int)] = {
+    def getArgumentFlagResult[A](flagArgument: Argument[Unit], getter: String => Option[A], command: List[String]): Option[PosResult[A]] = {
         for (i <- 0 until command.length) {
             val commandPart = command(i)
 
@@ -123,7 +125,8 @@ object CommandUtil {
                     return getter(commandParts(1))
                 } else if (command.length > 1) {
                     return getter(command(1))
-                }
+                } else
+                    return flagArgument.getSuggestions(flagPart)
             } else
                 return flagArgument.getSuggestions(flagPart)
         }

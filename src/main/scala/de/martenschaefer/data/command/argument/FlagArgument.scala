@@ -14,19 +14,23 @@ class FlagArgument(val flag: String, val shortFlag: Option[Char] = None) extends
             && argument.matches("^-[a-z]+") && argument.contains(this.shortFlag.get))
 
     override def getSuggestions(argument: String): List[String] = {
-        if (argument.startsWith("--"))
+        if (argument.startsWith("--")) {
             if (this.flag.startsWith(argument.substring(2)))
                 List("--" + this.flag)
             else
                 List.empty
-
-        else if (this.shortFlag.isDefined && argument.matches("-[a-z]*")
-            && !argument.matches("-[a-z]*=.*"))
+        } else if (this.shortFlag.isDefined && argument.matches("-[a-z]+")
+            && !argument.matches("-[a-z]*=.*")) {
             if (argument.contains(this.shortFlag.get))
                 List(argument)
             else
                 List(argument + this.shortFlag.get)
-        else
+        } else if ("-" == argument) {
+            if (this.shortFlag.isDefined)
+                List("--" + this.flag, "-" + this.shortFlag.get)
+            else
+                List("--" + this.flag)
+        } else
             List.empty
     }
 }

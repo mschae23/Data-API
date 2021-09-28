@@ -106,23 +106,26 @@ object CommandBuilder {
 
         context.subCommands ::= new Command[T] {
             override def run(command: List[String]): Option[T] = {
-                build(builder(CommandUtil.hasFlag(command, argument)))
-                    .run(CommandUtil.removeFirstMatchingArgument(command, argument))
+                val (hasFlag, i, used) = CommandUtil.hasArgument(command, argument)
+
+                build(builder(hasFlag)).run(command.patch(i, Nil, used))
             }
 
             override def getSuggestions(command: List[String]): List[String] = {
-                val hasFlag = CommandUtil.hasFlag(command, argument)
+                val (hasFlag, i, used) = CommandUtil.hasArgument(command, argument)
 
-                if (!hasFlag) {
-                    val argumentPart = if (command.isEmpty) "" else command(0)
+                val suggestions = if (!hasFlag || command.drop(i + used).isEmpty) {
+                    val argumentPart = if (command.isEmpty) "" else command(command.length - 1)
 
                     val suggestions = argument.getSuggestions(argumentPart)
 
-                    if (!suggestions.isEmpty)
+                    if (hasFlag)
                         return suggestions
-                }
+                    else
+                        suggestions
+                } else List.empty
 
-                build(builder(hasFlag)).getSuggestions(CommandUtil.removeFirstMatchingArgument(command, argument))
+                build(builder(hasFlag)).getSuggestions(command.patch(i, Nil, used)) ::: suggestions
             }
         }
 
@@ -139,10 +142,7 @@ object CommandBuilder {
                 val argumentPart = if (command.isEmpty) "" else command(0)
                 val suggestions = flags.flatMap(_._2.getSuggestions(argumentPart))
 
-                if (!suggestions.isEmpty)
-                    return suggestions.toList
-
-                build(builder(hasFlags)).getSuggestions(CommandUtil.removeFlags(command, flags))
+                build(builder(hasFlags)).getSuggestions(CommandUtil.removeFlags(command, flags)) ::: suggestions.toList
             }
         }
     }
@@ -155,20 +155,24 @@ object CommandBuilder {
                 if (command.isEmpty)
                     return None;
 
-                if (CommandUtil.hasFlag(command, argument))
-                    return build(builder).run(CommandUtil.removeFirstMatchingArgument(command, argument))
+                val (hasFlag, i, used) = CommandUtil.hasArgument(command, argument)
+
+                if (hasFlag)
+                    return build(builder).run(command.patch(i, Nil, used))
 
                 None
             }
 
             override def getSuggestions(command: List[String]): List[String] = {
-                if (!CommandUtil.hasFlag(command, argument)) {
-                    val argumentPart = if (command.isEmpty) "" else command(0)
+                val (hasFlag, i, used) = CommandUtil.hasArgument(command, argument)
 
-                    return argument.getSuggestions(argumentPart)
-                }
+                val suggestions = if (!hasFlag || command.drop(i + used).isEmpty) {
+                    val argumentPart = if (command.isEmpty) "" else command(i)
 
-                build(builder).getSuggestions(CommandUtil.removeFirstMatchingArgument(command, argument))
+                    argument.getSuggestions(argumentPart)
+                } else List.empty
+
+                suggestions ::: build(builder).getSuggestions(command.patch(i, Nil, used))
             }
         }
     }
@@ -191,7 +195,9 @@ object CommandBuilder {
             }
 
             override def getSuggestions(command: List[String]): List[String] = {
-                val commandPart = if (command.isEmpty) "" else command(0)
+                val (hasFlag, i, used) = CommandUtil.hasArgument(command, flagArgument)
+
+                val commandPart = if (command.isEmpty) "" else command(i)
                 val commandParts = commandPart.split("=").toList
 
                 val flagSuggestions =
@@ -199,8 +205,9 @@ object CommandBuilder {
 
                 val resultArgument = CommandUtil.getArgumentFlagResult(flagArgument, argument.get(_), command)
 
-                for ((result, i, used) <- resultArgument)
-                    return build(builder(result)).getSuggestions(command.drop(used)) ::: flagSuggestions
+                for ((result, i, used) <- resultArgument) {
+                    return flagSuggestions ::: build(builder(result)).getSuggestions(command.drop(used))
+                }
 
                 flagSuggestions
             }
