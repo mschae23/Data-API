@@ -163,7 +163,7 @@ class CodecTest extends UnitSpec {
             ))
         ))
 
-        assertResult(Failure(Vector(
+        assertResult(Failure(List(
             NotABoolean(FloatElement(5.5f), List(ElementNode.Name("test_value"))),
             NotAString(BooleanElement(false), List(ElementNode.Name("test_object"), ElementNode.Name("test_1")))
         ))) {
@@ -178,7 +178,7 @@ class CodecTest extends UnitSpec {
             ))
         ))
 
-        assertResult(Failure(Vector(
+        assertResult(Failure(List(
             MissingKey(testElement, List(ElementNode.Name("test_value"))),
             MissingKey(ObjectElement(Map("test_2" -> IntElement(8))), List(ElementNode.Name("test_object"),
                 ElementNode.Name("test_1")))
@@ -190,7 +190,7 @@ class CodecTest extends UnitSpec {
     it should "return a null element error when decoding elements with null fields" in {
         val testObject = Test3(null, 0.5f)
 
-        assertResult(Failure(Vector(
+        assertResult(Failure(List(
             NullElementError(List(ElementNode.Name("test_object_2")))
         ))) {
             Codec[Test3].encodeElement(testObject)

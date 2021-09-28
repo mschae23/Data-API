@@ -105,15 +105,15 @@ trait Registry[T](override val lifecycle: Lifecycle) extends Codec[T] {
 
     override def encodeElement(value: T): Result[Element] =
         Codec[Identifier].encodeElement(this.getId(value).getOrElse(
-            return Failure(Vector(Registry.UnknownRegistryElementError(value)), this.lifecycle)))
+            return Failure(List(Registry.UnknownRegistryElementError(value)), this.lifecycle)))
 
     override def encodeElementIO[F[_] : Sync](value: T): F[Result[Element]] =
         Codec[Identifier].encodeElementIO(this.getId(value).getOrElse(
-            return Sync[F].pure(Failure(Vector(Registry.UnknownRegistryElementError(value)), this.lifecycle))))
+            return Sync[F].pure(Failure(List(Registry.UnknownRegistryElementError(value)), this.lifecycle))))
 
     override def decodeElement(element: Element): Result[T] = {
         Identifier.createCodec(this.getName.namespace).decodeElement(element) match {
-            case Success(id, l) => this.get(id).map(Success(_, this.lifecycle + l)).getOrElse(Failure(Vector(
+            case Success(id, l) => this.get(id).map(Success(_, this.lifecycle + l)).getOrElse(Failure(List(
                 Registry.UnknownRegistryIdError(element)), this.lifecycle + l))
             case Failure(errors, l) => Failure(errors, this.lifecycle + l)
         }
@@ -122,7 +122,7 @@ trait Registry[T](override val lifecycle: Lifecycle) extends Codec[T] {
     override def decodeElementIO[F[_] : Sync](element: Element): F[Result[T]] = for {
         decodedId <- Identifier.createCodec(this.getName.namespace).decodeElementIO(element)
         result <- decodedId match {
-            case Success(id, l) => Sync[F].delay(this.get(id).map(Success(_, this.lifecycle + l)).getOrElse(Failure(Vector(
+            case Success(id, l) => Sync[F].delay(this.get(id).map(Success(_, this.lifecycle + l)).getOrElse(Failure(List(
                 Registry.UnknownRegistryIdError(element)), this.lifecycle + l)))
             case Failure(errors, l) => Sync[F].pure(Failure(errors, this.lifecycle + l))
         }

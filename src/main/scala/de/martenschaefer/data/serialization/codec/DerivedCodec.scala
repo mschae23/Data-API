@@ -22,15 +22,15 @@ class DerivedCodec[A](using inst: K0.ProductInstances[Codec, A], labelling: Labe
                     case Success(element, l) =>
                         acc.flatMap(map => Success(map.updated(label, element), acc.lifecycle + l))
                     case Failure(errors, l) =>
-                        acc.mapLeft(_.appendedAll(errors.map(_.withPrependedPath(label)))).addLifecycle(l)
+                        acc.mapLeft(errors.map(_.withPrependedPath(label)) ::: _).addLifecycle(l)
                 }
             }.map(ObjectElement(_))
 
     override def decodeElement(element: Element): Result[A] = element match {
         case ObjectElement(map) =>
-            type Acc = (Seq[String], Vector[ElementError], Lifecycle)
+            type Acc = (Seq[String], List[ElementError], Lifecycle)
 
-            inst.unfold[Acc]((labelling.elemLabels, Vector(), Lifecycle.Stable))([t] => (acc: Acc, codec: Codec[t]) => {
+            inst.unfold[Acc]((labelling.elemLabels, List.empty, Lifecycle.Stable))([t] => (acc: Acc, codec: Codec[t]) => {
                 val (elemLabels, errors, lifecycle) = acc
                 val last = elemLabels.size < 2
                 // Don't return None before the last field, as that makes it not decode every element
@@ -44,16 +44,16 @@ class DerivedCodec[A](using inst: K0.ProductInstances[Codec, A], labelling: Labe
                         else ((elemLabels.tail, errors, lifecycle + l),
                             if (errors.isEmpty) Some(value) else scala.None)
 
-                    case Failure(errors2, l) => if (fieldElement == None) ((elemLabels.tail, errors.appended(
-                        RecordParseError.MissingKey(element, List(ElementNode.Name(label)))), lifecycle + l), none) else
-                        ((elemLabels.tail, errors.appendedAll(errors2.map(_.withPrependedPath(label))), lifecycle + l), none)
+                    case Failure(errors2, l) => if (fieldElement == None) ((elemLabels.tail,
+                        errors.appended(RecordParseError.MissingKey(element, List(ElementNode.Name(label)))), lifecycle + l), none) else
+                        ((elemLabels.tail, errors ::: errors2.map(_.withPrependedPath(label)), lifecycle + l), none)
                 }
             }) match {
                 case ((_, errors, lifecycle), scala.None) => Failure(errors, lifecycle)
                 case ((_, _, lifecycle), Some(value)) => Success(value, lifecycle)
             }
 
-        case _ => Failure(Vector(RecordParseError.NotAnObject(element, List())), this.lifecycle)
+        case _ => Failure(List(RecordParseError.NotAnObject(element, List.empty)), this.lifecycle)
     }
 
     private type LifecycleAcc = (Lifecycle, Int)

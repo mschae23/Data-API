@@ -117,7 +117,7 @@ class DerivedCodecTest extends UnitSpec {
             ))
         ))
 
-        assertResult(Failure(Vector(
+        assertResult(Failure(List(
             NotABoolean(FloatElement(5.5f), List(ElementNode.Name("test_value"))),
             NotAString(BooleanElement(false), List(ElementNode.Name("test_object"), ElementNode.Name("test_1")))
         ))) {
@@ -132,7 +132,7 @@ class DerivedCodecTest extends UnitSpec {
             ))
         ))
 
-        assertResult(Failure(Vector(
+        assertResult(Failure(List(
             MissingKey(testElement, List(ElementNode.Name("test_value"))),
             MissingKey(ObjectElement(Map("test_2" -> IntElement(8))), List(ElementNode.Name("test_object"),
                 ElementNode.Name("test_1")))

@@ -18,7 +18,7 @@ object GsonElementCodec extends Codec[JsonElement] {
                 case l: Long => LongElement(l.longValue())
                 case f: Float => FloatElement(f.floatValue())
                 case d: Double => DoubleElement(d.doubleValue())
-                case n => return Failure(Vector(ParseError(s"Unknown number object: $n", List())))
+                case n => return Failure(List(ParseError(s"Unknown number object: $n", List.empty)))
             }
             case p if p.isBoolean => BooleanElement(p.getAsBoolean)
             case p if p.isString => StringElement(p.getAsString)
@@ -28,8 +28,8 @@ object GsonElementCodec extends Codec[JsonElement] {
 
             for (i <- 0 until array.size) {
                 val element = array.get(i)
-                this.encodeElement(element).mapBoth(errors => result = result.flatMapBoth(errorList => Failure(errorList
-                    .appendedAll(Utils.withPrependedPath(errors, ElementNode.Index(i)))))(
+                this.encodeElement(element).mapBoth(errors => result = result.flatMapBoth(errorList => Failure(
+                    errorList ::: Utils.withPrependedPath(errors, ElementNode.Index(i))))(
                     _ => Failure(Utils.withPrependedPath(errors, ElementNode.Index(i)))))(e =>
                     result = result.map(_.appended(e))
                 )
@@ -41,9 +41,9 @@ object GsonElementCodec extends Codec[JsonElement] {
             var result: Result[Map[String, Element]] = Success(Map())
 
             for ((key, element) <- jsonObject.entrySet.asScala.map(entry => (entry.getKey, entry.getValue))) {
-                this.encodeElement(element).mapBoth(errors => result = result.flatMapBoth(errorList => Failure(errorList
-                    .appendedAll(Utils.withPrependedPath(errors, key))))(_ => Failure(Utils.withPrependedPath(errors, key))))(
-                    e => result = result.map(_ + (key -> e)))
+                this.encodeElement(element).mapBoth(errors => result = result.flatMapBoth(errorList => Failure(
+                    errorList ::: Utils.withPrependedPath(errors, key)))(_ =>
+                    Failure(Utils.withPrependedPath(errors, key))))(e => result = result.map(_ + (key -> e)))
             }
 
             result.map(map => ObjectElement(map))
@@ -59,12 +59,12 @@ object GsonElementCodec extends Codec[JsonElement] {
         case StringElement(value) => Success(new JsonPrimitive(value))
 
         case ArrayElement(values) => val array = new JsonArray(values.size)
-            var errors = Vector[ElementError]()
+            var errors = List.empty[ElementError]
 
             for (i <- 0 until values.size) {
                 val element = values(i)
-                this.decodeElement(element).mapBoth(errorList => errors.appendedAll(Utils.withPrependedPath(
-                    errorList, ElementNode.Index(i))))(e =>
+                this.decodeElement(element).mapBoth(errorList => errors ::: Utils.withPrependedPath(
+                    errorList, ElementNode.Index(i)))(e =>
                     array.add(e)
                 )
             }
@@ -74,11 +74,11 @@ object GsonElementCodec extends Codec[JsonElement] {
             else
                 Failure(errors)
         case ObjectElement(map) => val json = new JsonObject()
-            var errors = Vector[ElementError]()
+            var errors = List.empty[ElementError]
 
             for ((key, element) <- map) {
-                this.decodeElement(element).mapBoth(errorList => errors.appendedAll(Utils.withPrependedPath(
-                    errorList, key)))(e =>
+                this.decodeElement(element).mapBoth(errorList => errors ::: Utils.withPrependedPath(
+                    errorList, key))(e =>
                     json.add(key, e)
                 )
             }

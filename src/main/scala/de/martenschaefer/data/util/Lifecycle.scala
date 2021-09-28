@@ -30,7 +30,7 @@ object Lifecycle {
         case Left(name) => name match {
             case "stable" => Success(Lifecycle.Stable)
             case "experimental" => Success(Lifecycle.Experimental)
-            case _ => Failure(Vector(RecordParseError.ValidationParseError(EitherError.message, element, List())))
+            case _ => Failure(List(RecordParseError.ValidationParseError(EitherError.message, element, List.empty)))
         }
         case Right(deprecated) => Success(deprecated)
     })(_ match {

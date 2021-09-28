@@ -3,6 +3,7 @@ package de.martenschaefer.data.command.builder
 import scala.util.control.Breaks.break
 import de.martenschaefer.data.command.Command
 import de.martenschaefer.data.command.argument.CommandArgument
+import de.martenschaefer.data.command.util.CommandUtil
 
 object CommandBuilder {
     private type Context[T] = CommandBuilderContext[T]
@@ -12,7 +13,6 @@ object CommandBuilder {
     def build[T](builder: Function[T]): Command[T] = {
         val context = new Context[T](List.empty)
         builder(using context)
-
         val subCommands = context.subCommands.reverse
 
         new Command[T] {
@@ -32,7 +32,6 @@ object CommandBuilder {
             override def getSuggestions(command: List[String]): List[String] = {
                 for (i <- 0 until subCommands.length) {
                     val subCommand = subCommands(i)
-
                     val suggestions = subCommand.getSuggestions(command)
 
                     if (!suggestions.isEmpty)
@@ -45,7 +44,7 @@ object CommandBuilder {
     }
 
     def result[T](result: T, allowNonEmptyCommand: Boolean = true)(using context: Context[T]): Unit = {
-        context.subCommands ::= createNextCommand(createResultCommand(result),
+        context.subCommands ::= CommandUtil.createNextCommand(CommandUtil.createResultCommand(result),
             command => if (allowNonEmptyCommand) List.empty else command)
     }
 
@@ -55,31 +54,14 @@ object CommandBuilder {
                 if (command.length < 1)
                     return None;
 
-                argument.get(command(0)) match {
-                    case Some(value) => {
-                        build(builder(value)).run(command.tail)
-                    }
-
-                    case _ => return None;
+                CommandUtil.forArgument(argument, command) { value =>
+                    return build(builder(value)).run(command.tail)
                 }
             }
 
             override def getSuggestions(command: List[String]): List[String] = {
-                if (command.length >= 1) {
-                    argument.get(command(0)) match {
-                        case Some(value) => {
-                            if (command.tail.isEmpty)
-                                return argument.getSuggestions(command(0)) match {
-                                    case suggestions@head :: _ => suggestions
-
-                                    case _ => List(command(0))
-                                }
-                            else
-                                return build(builder(value)).getSuggestions(command.tail)
-                        }
-
-                        case _ =>
-                    }
+                CommandUtil.forArgument(argument, command) { value =>
+                    return CommandUtil.getSuggestionsForMatchingArgument(command, argument, value, builder)
                 }
 
                 val argumentPart = if (command.isEmpty) "" else command(0)
@@ -91,36 +73,19 @@ object CommandBuilder {
     def optionalArgument[T, A](argument: Argument[A])(builder: Option[A] => Function[T])(using context: Context[T]): Unit =
         context.subCommands ::= new Command[T] {
             override def run(command: List[String]): Option[T] = {
-                val argumentPart = if (command.isEmpty) "" else command(0)
-
-                argument.get(argumentPart) match {
-                    case Some(value) => {
-                        build(builder(Some(value))).run(command.tail)
-                    }
-
-                    case _ =>
-                        build(builder(None)).run(command.tail);
+                CommandUtil.forArgument(argument, command) { value =>
+                    return build(builder(Some(value))).run(command.tail)
                 }
+
+                build(builder(None)).run(command.tail);
             }
 
             override def getSuggestions(command: List[String]): List[String] = {
-                val argumentPart = if (command.isEmpty) "" else command(0)
-
-                argument.get(argumentPart) match {
-                    case Some(value) => {
-                        if (command.tail.isEmpty)
-                            return argument.getSuggestions(command(0)) match {
-                                case suggestions@head :: _ => suggestions
-
-                                case _ => List(command(0))
-                            }
-                        else
-                            return build(builder(Some(value))).getSuggestions(command.tail)
-                    }
-
-                    case _ =>
+                CommandUtil.forArgument(argument, command) { value =>
+                    return CommandUtil.getSuggestionsForMatchingArgument(command, argument, value, a => builder(Some(a)))
                 }
 
+                val argumentPart = if (command.isEmpty) "" else command(0)
                 val suggestions = argument.getSuggestions(argumentPart)
 
                 if (suggestions.isEmpty)
@@ -143,21 +108,11 @@ object CommandBuilder {
 
         context.subCommands ::= new Command[T] {
             override def run(command: List[String]): Option[T] = {
-                var hasFlag = false
-
-                for (commandPart <- command)
-                    if (argument.get(commandPart).isDefined)
-                        hasFlag = true
-
-                build(builder(hasFlag)).run(command)
+                build(builder(CommandUtil.hasFlag(command, argument))).run(command)
             }
 
             override def getSuggestions(command: List[String]): List[String] = {
-                var hasFlag = false
-
-                for (commandPart <- command)
-                    if (argument.get(commandPart).isDefined)
-                        hasFlag = true
+                val hasFlag = CommandUtil.hasFlag(command, argument)
 
                 if (!hasFlag) {
                     val argumentPart = if (command.isEmpty) "" else command(0)
@@ -172,35 +127,16 @@ object CommandBuilder {
             }
         }
 
-    def withFlags[T, K](flags: Map[K, Argument[Unit]])(builder: Map[K, Boolean] => Function[T])(using context: Context[T]): Unit =
-        context.subCommands = new Command[T] {
+    def withFlags[T, K](flags: Map[K, Argument[Unit]])(builder: Map[K, Boolean] => Function[T])(using context: Context[T]): Unit = {
+        context.subCommands ::= new Command[T] {
             override def run(command: List[String]): Option[T] = {
-                var hasFlags: Map[K, Boolean] = Map.empty
-
-                for (commandPart <- command)
-                    flags.foreach((k, argument) => if (argument.get(commandPart).isDefined)
-                        hasFlags = hasFlags.updated(k, true))
-
-                for ((k, argument) <- flags)
-                    if (!hasFlags.contains(k))
-                        hasFlags = hasFlags.updated(k, false)
-
-                build(builder(hasFlags)).run(command)
+                build(builder(CommandUtil.hasFlags(command, flags))).run(command)
             }
 
             override def getSuggestions(command: List[String]): List[String] = {
-                var hasFlags: Map[K, Boolean] = Map.empty
-
-                for (commandPart <- command)
-                    flags.foreach((k, argument) => if (argument.get(commandPart).isDefined)
-                        hasFlags = hasFlags.updated(k, true))
-
-                for ((k, argument) <- flags)
-                    if (!hasFlags.contains(k))
-                        hasFlags = hasFlags.updated(k, false)
+                val hasFlags = CommandUtil.hasFlags(command, flags)
 
                 val argumentPart = if (command.isEmpty) "" else command(0)
-
                 val suggestions = flags.flatMap(_._2.getSuggestions(argumentPart))
 
                 if (!suggestions.isEmpty)
@@ -208,7 +144,8 @@ object CommandBuilder {
 
                 build(builder(hasFlags)).getSuggestions(command)
             }
-        } :: context.subCommands
+        }
+    }
 
     def literalFlag[T](flag: String, shortFlag: Option[Char] = None)(builder: Function[T])(using context: Context[T]): Unit = {
         val argument = CommandArgument.flag(flag, shortFlag)
@@ -218,26 +155,14 @@ object CommandBuilder {
                 if (command.isEmpty)
                     return None;
 
-                var hasFlag = false
-
-                for (commandPart <- command)
-                    if (argument.get(commandPart).isDefined)
-                        hasFlag = true
-
-                if (hasFlag)
+                if (CommandUtil.hasFlag(command, argument))
                     return build(builder).run(command)
 
                 None
             }
 
             override def getSuggestions(command: List[String]): List[String] = {
-                var hasFlag = false
-
-                for (commandPart <- command)
-                    if (argument.get(commandPart).isDefined)
-                        hasFlag = true
-
-                if (!hasFlag) {
+                if (!CommandUtil.hasFlag(command, argument)) {
                     val argumentPart = if (command.isEmpty) "" else command(0)
 
                     return argument.getSuggestions(argumentPart)
@@ -252,33 +177,12 @@ object CommandBuilder {
         builder: A => Function[T])(using context: Context[T]): Unit = {
         val flagArgument = CommandArgument.flag(flag, shortFlag)
 
-        def getResultArgument(command: List[String]): Option[A] = {
-            for (i <- 0 until command.length) {
-                val commandPart = command(i)
-
-                val commandPartParts = commandPart.split("=")
-
-                if (commandPartParts.length > 0 && commandPartParts.length <= 2) {
-                    val flagPart = commandPartParts(0)
-
-                    if (flagArgument.get(flagPart).isDefined)
-                        if (commandPartParts.length == 2) {
-                            return argument.get(commandPartParts(1))
-                        } else if (i < command.length - 1) {
-                            return argument.get(command(i + 1))
-                        }
-                }
-            }
-
-            None
-        }
-
         context.subCommands ::= new Command[T] {
             override def run(command: List[String]): Option[T] = {
                 if (command.length < 1)
                     return None;
 
-                val resultArgument = getResultArgument(command)
+                val resultArgument = CommandUtil.getArgumentFlagResult(argument, flagArgument, command)
 
                 for (result <- resultArgument)
                     return build(builder(result)).run(command)
@@ -306,7 +210,7 @@ object CommandBuilder {
                     }
                 }
 
-                val resultArgument = getResultArgument(command)
+                val resultArgument = CommandUtil.getArgumentFlagResult(argument, flagArgument, command)
 
                 for (result <- resultArgument)
                     return build(builder(result)).getSuggestions(command)
@@ -314,22 +218,5 @@ object CommandBuilder {
                 List.empty
             }
         }
-    }
-
-    def createNextCommand[T](command: Command[T], nextCommand: List[String] => List[String]): Command[T] = new Command[T] {
-        override def run(commandParts: List[String]): Option[T] =
-            command.run(nextCommand(commandParts))
-
-        override def getSuggestions(commandParts: List[String]): List[String] =
-            command.getSuggestions(nextCommand(commandParts))
-    }
-
-    def createResultCommand[T](result: T): Command[T] = new Command[T] {
-        override def run(command: List[String]): Option[T] = {
-            if (command.isEmpty) Some(result)
-            else None
-        }
-
-        override def getSuggestions(command: List[String]): List[String] = List.empty
     }
 }

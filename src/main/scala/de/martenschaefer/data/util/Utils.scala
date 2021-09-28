@@ -23,10 +23,10 @@ object Utils {
         }
     }
 
-    def withPrependedPath(list: Vector[ElementError], prependedPath: ElementNode): Vector[ElementError] = list.map(_
+    def withPrependedPath(list: List[ElementError], prependedPath: ElementNode): List[ElementError] = list.map(_
         .withPrependedPath(prependedPath))
 
-    def withPrependedPath(list: Vector[ElementError], prependedPath: String): Vector[ElementError] = withPrependedPath(
+    def withPrependedPath(list: List[ElementError], prependedPath: String): List[ElementError] = withPrependedPath(
         list, ElementNode.Name(prependedPath))
 
     def toSnakeCase(string: String): String =

@@ -16,7 +16,7 @@ object PropertiesCodecs {
                 case Element.ObjectElement(map) =>
                     this.encodeObject(properties, map, "")
 
-                case _ => return Failure(Vector(RecordParseError.NotAnObject(element, List())))
+                case _ => return Failure(List(RecordParseError.NotAnObject(element, List.empty)))
             }
 
             val writer = new StringWriter()
@@ -74,12 +74,12 @@ object PropertiesCodecs {
                         case Element.ObjectElement(map) =>
                             element = Element.ObjectElement(this.updateMap(map, path, value))
 
-                        case _ => return Failure(Vector(RecordParseError.NotAnObject(element, List())))
+                        case _ => return Failure(List(RecordParseError.NotAnObject(element, List.empty)))
                     }
                 }
             }
 
-            Success[Vector[ElementError], Element](element)
+            Success[List[ElementError], Element](element)
         }
 
         def updateMap(map: Map[String, Element], path: List[String], value: String): Map[String, Element] = {

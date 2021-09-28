@@ -36,15 +36,15 @@ class KeyDispatchCodec[K: Codec, V](val typeKey: String = "type",
     override def decodeElement(element: Element): Result[V] = {
         val decodedKey = element match {
             case ObjectElement(map) => map.get(this.typeKey).map(Success(_, this.lifecycle)).getOrElse(
-                Failure(Vector(RecordParseError.MissingKey(element, List(ElementNode.Name(this.typeKey)))), this.lifecycle))
-            case _ => Failure(Vector(RecordParseError.NotAnObject(element, List())), this.lifecycle)
+                Failure(List(RecordParseError.MissingKey(element, List(ElementNode.Name(this.typeKey)))), this.lifecycle))
+            case _ => Failure(List(RecordParseError.NotAnObject(element, List.empty)), this.lifecycle)
         }
 
         decodedKey.flatMap(keyElement => Codec[K].decodeElement(keyElement).mapLeft(_.map(_.withPrependedPath(this.typeKey))))
             .flatMap(key => this.codec(key).decodeElement(element) match {
                 case Failure(errors, l) => this.codec(key).decodeElement(element match {
                     case ObjectElement(map) => map.get(this.valueKey).getOrElse(return Failure(errors, this.lifecycle + l))
-                    case _ => return Failure(Vector(RecordParseError.NotAnObject(element, List())), this.lifecycle + l)
+                    case _ => return Failure(List(RecordParseError.NotAnObject(element, List.empty)), this.lifecycle + l)
                 }).addLifecycle(this.lifecycle).mapLeft(_.map(_.withPrependedPath(this.valueKey)))
 
                 case result => result.addLifecycle(this.lifecycle)
