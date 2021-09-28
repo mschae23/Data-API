@@ -7,13 +7,21 @@ import de.martenschaefer.data.test.UnitSpec
 
 class CommandSuggestionsTest extends UnitSpec {
     val command: Command[String] = Command.build {
-        literal("do") {
+        literal("say") {
             literal("something") {
-                result("Did something")
+                result("Said something")
+            }
+
+            literal("somewhere") {
+                result("Said \"somewhere\"")
+            }
+
+            literal("somehow") {
+                result("Said \"somehow\"")
             }
 
             literal("nothing") {
-                result("Did nothing")
+                result("Said nothing")
             }
         }
 
@@ -29,11 +37,11 @@ class CommandSuggestionsTest extends UnitSpec {
     }
 
     "command suggestions" should "return the last command part for correct input (1)" in {
-        command.getSuggestions(List("do", "something")) shouldBe List("something")
+        command.getSuggestions(List("say", "something")) shouldBe List("something")
     }
 
     they should "return the last command part for correct input (2)" in {
-        command.getSuggestions(List("do", "nothing")) shouldBe List("nothing")
+        command.getSuggestions(List("say", "nothing")) shouldBe List("nothing")
     }
 
     they should "return the last command part for correct input (3)" in {
@@ -45,23 +53,31 @@ class CommandSuggestionsTest extends UnitSpec {
     }
 
     they should "give correct suggestions for incomplete input (1)" in {
-        command.getSuggestions(List("do", "someth")) shouldBe List("something")
+        command.getSuggestions(List("say", "someth")) shouldBe List("something")
     }
 
     they should "give correct suggestions for incomplete input (2)" in {
-        command.getSuggestions(List("do", "not")) shouldBe List("nothing")
+        command.getSuggestions(List("say", "some")) shouldBe List("something", "somewhere", "somehow")
     }
 
     they should "give correct suggestions for incomplete input (3)" in {
-        command.getSuggestions(List("test")) shouldBe List("test")
+        command.getSuggestions(List("say", "so")) shouldBe List("something", "somewhere", "somehow")
     }
 
     they should "give correct suggestions for incomplete input (4)" in {
+        command.getSuggestions(List("say", "not")) shouldBe List("nothing")
+    }
+
+    they should "give correct suggestions for incomplete input (5)" in {
+        command.getSuggestions(List("test")) shouldBe List("test")
+    }
+
+    they should "give correct suggestions for incomplete input (6)" in {
         command.getSuggestions(List("test", "")) shouldBe List("nothing")
     }
 
     they should "return an empty list for incorrect input (1)" in {
-        command.getSuggestions(List("do", "whatever")) shouldBe List.empty
+        command.getSuggestions(List("say", "whatever")) shouldBe List.empty
     }
 
     they should "return an empty list for incorrect input (2)" in {

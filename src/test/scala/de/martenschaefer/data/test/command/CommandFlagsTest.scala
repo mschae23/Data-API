@@ -25,6 +25,10 @@ class CommandFlagsTest extends UnitSpec {
             }
 
             argumentFlag("test-name", Some('n'), CommandArgument.string("test name")) { testName =>
+                literal("now") {
+                    result(s"Tested $testName now")
+                }
+
                 result(s"Tested $testName")
             }
         }
@@ -39,27 +43,35 @@ class CommandFlagsTest extends UnitSpec {
     }
 
     it should "work correctly with correct input (3)" in {
-        command.run(List("do", "--nothing")) shouldBe Some("Did nothing")
+        command.run(List("do", "--good", "something")) shouldBe Some("Did something well")
     }
 
     it should "work correctly with correct input (4)" in {
-        command.run(List("test", "nothing")) shouldBe Some("Didn't test anything")
+        command.run(List("do", "--nothing")) shouldBe Some("Did nothing")
     }
 
     it should "work correctly with correct input (5)" in {
-        command.run(List("test", "--test-name", "commands")) shouldBe Some("Tested commands")
+        command.run(List("test", "nothing")) shouldBe Some("Didn't test anything")
     }
 
     it should "work correctly with correct input (6)" in {
-        command.run(List("test", "--test-name=commands")) shouldBe Some("Tested commands")
+        command.run(List("test", "--test-name", "commands")) shouldBe Some("Tested commands")
     }
 
     it should "work correctly with correct input (7)" in {
-        command.run(List("test", "-n", "commands")) shouldBe Some("Tested commands")
+        command.run(List("test", "--test-name=commands")) shouldBe Some("Tested commands")
     }
 
     it should "work correctly with correct input (8)" in {
+        command.run(List("test", "-n", "commands")) shouldBe Some("Tested commands")
+    }
+
+    it should "work correctly with correct input (9)" in {
         command.run(List("test", "-n=commands")) shouldBe Some("Tested commands")
+    }
+
+    it should "work correctly with correct input (10)" in {
+        command.run(List("test", "--test-name", "commands", "now")) shouldBe Some("Tested commands now")
     }
 
     it should "fail with incorrect input (1)" in {

@@ -6,8 +6,8 @@ import de.martenschaefer.data.command.argument.CommandArgument
 import de.martenschaefer.data.command.util.CommandUtil
 
 object CommandBuilder {
-    private type Context[T] = CommandBuilderContext[T]
-    private type Argument[T] = CommandArgument[T]
+    type Context[T] = CommandBuilderContext[T]
+    type Argument[T] = CommandArgument[T]
     type Function[T] = Context[T] ?=> Unit
 
     def build[T](builder: Function[T]): Command[T] = {
@@ -30,15 +30,13 @@ object CommandBuilder {
             }
 
             override def getSuggestions(command: List[String]): List[String] = {
-                for (i <- 0 until subCommands.length) {
-                    val subCommand = subCommands(i)
-                    val suggestions = subCommand.getSuggestions(command)
+                var suggestions: List[String] = List.empty
 
-                    if (!suggestions.isEmpty)
-                        return suggestions
+                for (i <- 0 until subCommands.length) {
+                    suggestions = suggestions ::: subCommands(i).getSuggestions(command)
                 }
 
-                List.empty
+                suggestions.distinct.filter(!_.isBlank)
             }
         }
     }
@@ -108,7 +106,8 @@ object CommandBuilder {
 
         context.subCommands ::= new Command[T] {
             override def run(command: List[String]): Option[T] = {
-                build(builder(CommandUtil.hasFlag(command, argument))).run(command)
+                build(builder(CommandUtil.hasFlag(command, argument)))
+                    .run(CommandUtil.removeFirstMatchingArgument(command, argument))
             }
 
             override def getSuggestions(command: List[String]): List[String] = {
@@ -123,14 +122,15 @@ object CommandBuilder {
                         return suggestions
                 }
 
-                build(builder(hasFlag)).getSuggestions(command)
+                build(builder(hasFlag)).getSuggestions(CommandUtil.removeFirstMatchingArgument(command, argument))
             }
         }
 
     def withFlags[T, K](flags: Map[K, Argument[Unit]])(builder: Map[K, Boolean] => Function[T])(using context: Context[T]): Unit = {
         context.subCommands ::= new Command[T] {
             override def run(command: List[String]): Option[T] = {
-                build(builder(CommandUtil.hasFlags(command, flags))).run(command)
+                build(builder(CommandUtil.hasFlags(command, flags)))
+                    .run(CommandUtil.removeFlags(command, flags))
             }
 
             override def getSuggestions(command: List[String]): List[String] = {
@@ -142,7 +142,7 @@ object CommandBuilder {
                 if (!suggestions.isEmpty)
                     return suggestions.toList
 
-                build(builder(hasFlags)).getSuggestions(command)
+                build(builder(hasFlags)).getSuggestions(CommandUtil.removeFlags(command, flags))
             }
         }
     }
@@ -156,7 +156,7 @@ object CommandBuilder {
                     return None;
 
                 if (CommandUtil.hasFlag(command, argument))
-                    return build(builder).run(command)
+                    return build(builder).run(CommandUtil.removeFirstMatchingArgument(command, argument))
 
                 None
             }
@@ -168,13 +168,13 @@ object CommandBuilder {
                     return argument.getSuggestions(argumentPart)
                 }
 
-                build(builder).getSuggestions(command)
+                build(builder).getSuggestions(CommandUtil.removeFirstMatchingArgument(command, argument))
             }
         }
     }
 
-    def argumentFlag[T, A](flag: String, shortFlag: Option[Char] = None, argument: Argument[A])(
-        builder: A => Function[T])(using context: Context[T]): Unit = {
+    def argumentFlag[T, A](flag: String, shortFlag: Option[Char] = None, argument: Argument[A])
+                          (builder: A => Function[T])(using context: Context[T]): Unit = {
         val flagArgument = CommandArgument.flag(flag, shortFlag)
 
         context.subCommands ::= new Command[T] {
@@ -182,40 +182,27 @@ object CommandBuilder {
                 if (command.length < 1)
                     return None;
 
-                val resultArgument = CommandUtil.getArgumentFlagResult(argument, flagArgument, command)
+                val resultArgument = CommandUtil.getArgumentFlagResult(flagArgument, argument.get(_), command)
 
-                for (result <- resultArgument)
-                    return build(builder(result)).run(command)
+                for ((result, i, used) <- resultArgument)
+                    return build(builder(result)).run(command.patch(i, Nil, used))
 
                 None
             }
 
             override def getSuggestions(command: List[String]): List[String] = {
-                for (i <- 0 until command.length) {
-                    val commandPart = command(i)
+                val commandPart = if (command.isEmpty) "" else command(0)
+                val commandParts = commandPart.split("=").toList
 
-                    val commandPartParts = commandPart.split("=")
+                val flagSuggestions =
+                    CommandUtil.getArgumentFlagSuggestions(flagArgument, argument.getSuggestions(_), commandParts, command)
 
-                    if (commandPartParts.length > 0 && commandPartParts.length <= 2) {
-                        val flagPart = commandPartParts(0)
+                val resultArgument = CommandUtil.getArgumentFlagResult(flagArgument, argument.get(_), command)
 
-                        if (flagArgument.get(flagPart).isDefined) {
-                            if (commandPartParts.length == 2) {
-                                return argument.getSuggestions(commandPartParts(1))
-                            } else if (i < command.length - 1) {
-                                return argument.getSuggestions(command(i + 1))
-                            }
-                        } else
-                            return flagArgument.getSuggestions(flagPart)
-                    }
-                }
+                for ((result, i, used) <- resultArgument)
+                    return build(builder(result)).getSuggestions(command.drop(used)) ::: flagSuggestions
 
-                val resultArgument = CommandUtil.getArgumentFlagResult(argument, flagArgument, command)
-
-                for (result <- resultArgument)
-                    return build(builder(result)).getSuggestions(command)
-
-                List.empty
+                flagSuggestions
             }
         }
     }
