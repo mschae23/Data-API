@@ -52,7 +52,7 @@ class CommandFlagSuggestionsTest extends UnitSpec {
         command.getSuggestions(List("say", "somewhere")) shouldBe List("somewhere")
     }
 
-    they should "return the last command part for correct input (6)" in {
+    they should "return the last command part for correct input (5)" in {
         command.getSuggestions(List("say", "--message")) shouldBe List("--message")
     }
 
@@ -100,11 +100,11 @@ class CommandFlagSuggestionsTest extends UnitSpec {
         command.getSuggestions(List("say", "something", "else")) shouldBe List.empty
     }
 
-    "Argument flags" should "return an empty list for correct input" in {
+    "Argument flags" should "return an empty list for correct input (1)" in {
         command.getSuggestions(List("say", "--message", "Hello!", "--receiver", "you")) shouldBe List.empty
     }
 
-    they should "return an empty list for correct input (7)" in {
+    they should "return an empty list for correct input (2)" in {
         command.getSuggestions(List("say", "--message", "Hello")) shouldBe List.empty
     }
 }
