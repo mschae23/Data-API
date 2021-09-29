@@ -2,9 +2,9 @@ package de.martenschaefer.data.test.command
 
 import de.martenschaefer.data.command.Command
 import de.martenschaefer.data.command.argument.CommandArgument as Argument
-import de.martenschaefer.data.command.argument.CommandArgument.{ literal as literalArg, _ }
-import de.martenschaefer.data.command.util.CommandError.*
+import de.martenschaefer.data.command.argument.CommandArgument.{ literal as literalArg, * }
 import de.martenschaefer.data.command.builder.CommandBuilder.*
+import de.martenschaefer.data.command.util.CommandError.*
 import de.martenschaefer.data.test.UnitSpec
 import de.martenschaefer.data.util.DataResult.*
 
@@ -78,42 +78,66 @@ class CommandFlagsTest extends UnitSpec {
     }
 
     it should "fail with incorrect input (1)" in {
-        command.run(List("do", "whatever")) shouldBe Failure(List(
-            ArgumentNotMatchedError(List("whatever"), literalArg("something").name),
-            FlagNotFoundError(List("whatever"), "nothing"),
+        command.run(List("do", "whatever")) shouldBe Failure(List(NoMatchingSubcommandsError(List("do", "whatever"), List(
+            NoMatchingSubcommandsError(List("whatever"), List(
+                NoMatchingSubcommandsError(List("whatever"), List(
+                    ArgumentNotMatchedError(List("whatever"), literalArg("something").name)
+                )),
+                FlagNotFoundError(List("whatever"), "nothing")
+            )),
             ArgumentNotMatchedError(List("do", "whatever"), literalArg("test").name)
-        ))
+        ))))
     }
 
     it should "fail with incorrect input (2)" in {
         command.run(List("do", "nothing")) shouldBe Failure(List(
-            ArgumentNotMatchedError(List("nothing"), literalArg("something").name),
-            FlagNotFoundError(List("nothing"), "nothing"),
-            ArgumentNotMatchedError(List("do", "nothing"), literalArg("test").name)
+            NoMatchingSubcommandsError(List("do", "nothing"), List(
+                NoMatchingSubcommandsError(List("nothing"), List(
+                    NoMatchingSubcommandsError(List("nothing"), List(
+                        ArgumentNotMatchedError(List("nothing"), literalArg("something").name)
+                    )),
+                    FlagNotFoundError(List("nothing"), "nothing")
+                )),
+                ArgumentNotMatchedError(List("do", "nothing"), literalArg("test").name)
+            ))
         ))
     }
 
     it should "fail with incorrect input (3)" in {
         command.run(List("do")) shouldBe Failure(List(
-            ArgumentNotMatchedError(List.empty, literalArg("something").name),
-            FlagNotFoundError(List.empty, "nothing"),
-            ArgumentNotMatchedError(List("do"), literalArg("test").name)
+            NoMatchingSubcommandsError(List("do"), List(
+                NoMatchingSubcommandsError(List.empty, List(
+                    NoMatchingSubcommandsError(List.empty, List(
+                        ArgumentNotMatchedError(List.empty, literalArg("something").name)
+                    )),
+                    FlagNotFoundError(List.empty, "nothing")
+                )),
+                ArgumentNotMatchedError(List("do"), literalArg("test").name)
+            ))
         ))
     }
 
     it should "fail with incorrect input (4)" in {
         command.run(List("test")) shouldBe Failure(List(
-            ArgumentNotMatchedError(List.empty, literalArg("nothing").name),
-            FlagArgumentNotFoundError(List.empty, "test-name", string("test name").name),
-            ArgumentNotMatchedError(List("test"), literalArg("do").name)
+            NoMatchingSubcommandsError(List("test"), List(
+                NoMatchingSubcommandsError(List.empty, List(
+                    ArgumentNotMatchedError(List.empty, literalArg("nothing").name),
+                    FlagArgumentNotFoundError(List.empty, "test-name", string("test name").name)
+                )),
+                ArgumentNotMatchedError(List("test"), literalArg("do").name)
+            ))
         ))
     }
 
     it should "fail with incorrect input (5)" in {
         command.run(List("test", "something")) shouldBe Failure(List(
-            ArgumentNotMatchedError(List("something"), literalArg("nothing").name),
-            FlagArgumentNotFoundError(List("something"), "test-name", string("test name").name),
-            ArgumentNotMatchedError(List("test", "something"), literalArg("do").name)
+            NoMatchingSubcommandsError(List("test", "something"), List(
+                NoMatchingSubcommandsError(List("something"), List(
+                    ArgumentNotMatchedError(List("something"), literalArg("nothing").name),
+                    FlagArgumentNotFoundError(List("something"), "test-name", string("test name").name)
+                )),
+                ArgumentNotMatchedError(List("test", "something"), literalArg("do").name)
+            ))
         ))
     }
 }

@@ -48,27 +48,33 @@ class CommandTest extends UnitSpec {
     }
 
     it should "fail with incorrect input (1)" in {
-        command.run(List("do", "whatever")) shouldBe Failure(List(
-            ArgumentNotMatchedError(List("whatever"), literalArg("something").name),
-            ArgumentNotMatchedError(List("whatever"), literalArg("nothing").name),
+        command.run(List("do", "whatever")) shouldBe Failure(List(NoMatchingSubcommandsError(List("do", "whatever"), List(
+            NoMatchingSubcommandsError(List("whatever"), List(
+                ArgumentNotMatchedError(List("whatever"), literalArg("something").name),
+                ArgumentNotMatchedError(List("whatever"), literalArg("nothing").name)
+            )),
             ArgumentNotMatchedError(List("do", "whatever"), literalArg("test").name)
-        ))
+        ))))
     }
 
     it should "fail with incorrect input (2)" in {
-        command.run(List("do")) shouldBe Failure(List(
-            ArgumentNotMatchedError(List.empty, literalArg("something").name),
-            ArgumentNotMatchedError(List.empty, literalArg("nothing").name),
+        command.run(List("do")) shouldBe Failure(List(NoMatchingSubcommandsError(List("do"), List(
+            NoMatchingSubcommandsError(List.empty, List(
+                ArgumentNotMatchedError(List.empty, literalArg("something").name),
+                ArgumentNotMatchedError(List.empty, literalArg("nothing").name)
+            )),
             ArgumentNotMatchedError(List("do"), literalArg("test").name)
-        ))
+        ))))
     }
 
     it should "fail with incorrect input (3)" in {
-        command.run(List("test")) shouldBe Failure(List(
-            ArgumentNotMatchedError(List.empty, literalArg("nothing").name),
-            ArgumentNotMatchedError(List.empty, string("test name").name),
+        command.run(List("test")) shouldBe Failure(List(NoMatchingSubcommandsError(List("test"), List(
+            NoMatchingSubcommandsError(List.empty, List(
+                ArgumentNotMatchedError(List.empty, literalArg("nothing").name),
+                ArgumentNotMatchedError(List.empty, string("test name").name)
+            )),
             ArgumentNotMatchedError(List("test"), literalArg("do").name)
-        ))
+        ))))
     }
 
     it should "fail with incorrect input (4)" in {

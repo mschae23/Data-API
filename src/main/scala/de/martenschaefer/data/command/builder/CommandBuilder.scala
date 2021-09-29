@@ -35,12 +35,18 @@ object CommandBuilder {
                     }
                 }
 
-                Failure(errors.sortWith((error1, error2) => {
-                    if (!error1.isInstanceOf[CommandError] || !error2.isInstanceOf[CommandError])
-                        true
-                    else
-                        error1.asInstanceOf[CommandError].command.length < error2.asInstanceOf[CommandError].command.length
-                }), lifecycle)
+                Failure(List(CommandError.NoMatchingSubcommandsError(command, errors.sortWith((error1, error2) => {
+                    error1 match {
+                        case e1: CommandError => error2 match {
+                            case e2: CommandError =>
+                                e1.getNoMatchingSubcommandsDepth > e2.getNoMatchingSubcommandsDepth
+
+                            case _ => true
+                        }
+
+                        case _ => true
+                    }
+                }))), lifecycle)
             }
 
             override def getSuggestions(command: List[String]): List[String] = {

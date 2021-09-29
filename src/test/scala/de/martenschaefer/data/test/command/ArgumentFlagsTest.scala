@@ -2,7 +2,7 @@ package de.martenschaefer.data.test.command
 
 import de.martenschaefer.data.command.Command
 import de.martenschaefer.data.command.argument.CommandArgument as Argument
-import de.martenschaefer.data.command.argument.CommandArgument.{ literal as literalArg, _ }
+import de.martenschaefer.data.command.argument.CommandArgument.{ literal as literalArg, * }
 import de.martenschaefer.data.command.builder.CommandBuilder.*
 import de.martenschaefer.data.command.util.CommandError.*
 import de.martenschaefer.data.test.UnitSpec
@@ -77,40 +77,66 @@ class ArgumentFlagsTest extends UnitSpec {
 
     they should "fail for incorrect input (1)" in {
         command.run(List("say", "--messag", "Hello!", "--person", "someone")) shouldBe Failure(List(
-            FlagArgumentNotFoundError(List("--messag", "Hello!", "--person", "someone"), "message", string("message").name)
+            NoMatchingSubcommandsError(List("say", "--messag", "Hello!", "--person", "someone"), List(
+                NoMatchingSubcommandsError(List("--messag", "Hello!", "--person", "someone"), List(
+                    FlagArgumentNotFoundError(List("--messag", "Hello!", "--person", "someone"), "message", string("message").name)
+                ))
+            ))
         ))
     }
 
     they should "fail for incorrect input (2)" in {
         command.run(List("say", "--message", "Hello!", "--p", "someone")) shouldBe Failure(List(
-            FlagArgumentNotFoundError(List("--p", "someone"), "person", string("person").name),
-            FlagArgumentNotFoundError(List("--p", "someone"), "to", string("to").name)
+            NoMatchingSubcommandsError(List("say", "--message", "Hello!", "--p", "someone"), List(
+                NoMatchingSubcommandsError(List("--message", "Hello!", "--p", "someone"), List(
+                    NoMatchingSubcommandsError(List("--p", "someone"), List(
+                        FlagArgumentNotFoundError(List("--p", "someone"), "person", string("person").name),
+                        FlagArgumentNotFoundError(List("--p", "someone"), "to", string("to").name)
+                    ))
+                ))
+            ))
         ))
     }
 
     they should "fail for incorrect input (3)" in {
         command.run(List("say", "--message", "Hello!")) shouldBe Failure(List(
-            FlagArgumentNotFoundError(List.empty, "person", string("person").name),
-            FlagArgumentNotFoundError(List.empty, "to", string("to").name)
+            NoMatchingSubcommandsError(List("say", "--message", "Hello!"), List(
+                NoMatchingSubcommandsError(List("--message", "Hello!"), List(
+                    NoMatchingSubcommandsError(List.empty, List(
+                        FlagArgumentNotFoundError(List.empty, "person", string("person").name),
+                        FlagArgumentNotFoundError(List.empty, "to", string("to").name)
+                    ))
+                ))
+            ))
         ))
     }
 
     they should "fail for incorrect input (4)" in {
         command.run(List("say", "--message", "Hello!", "-p")) shouldBe Failure(List(
-            FlagArgumentNotFoundError(List("-p"), "person", string("person").name),
-            FlagArgumentNotFoundError(List("-p"), "to", string("to").name)
+            NoMatchingSubcommandsError(List("say", "--message", "Hello!", "-p"), List(
+                NoMatchingSubcommandsError(List("--message", "Hello!", "-p"), List(
+                    NoMatchingSubcommandsError(List("-p"), List(
+                        FlagArgumentNotFoundError(List("-p"), "person", string("person").name),
+                        FlagArgumentNotFoundError(List("-p"), "to", string("to").name)
+                    ))
+                ))
+            ))
         ))
     }
 
     they should "fail for incorrect input (5)" in {
-        command.run(List("say")) shouldBe Failure(List(
-            FlagArgumentNotFoundError(List.empty, "message", string("message").name)
-        ))
+        command.run(List("say")) shouldBe Failure(List(NoMatchingSubcommandsError(List("say"), List(
+            NoMatchingSubcommandsError(List.empty, List(
+                FlagArgumentNotFoundError(List.empty, "message", string("message").name)
+            ))
+        ))))
     }
 
     they should "fail for incorrect input (6)" in {
         command.run(List("--message", "something", "say", "-t=someone", "n=9")) shouldBe Failure(List(
-            ArgumentNotMatchedError(List("--message", "something", "say", "-t=someone", "n=9"), literalArg("say").name)
+            NoMatchingSubcommandsError(List("--message", "something", "say", "-t=someone", "n=9"), List(
+                ArgumentNotMatchedError(List("--message", "something", "say", "-t=someone", "n=9"), literalArg("say").name)
+            ))
         ))
     }
 }

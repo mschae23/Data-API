@@ -1,7 +1,7 @@
 package de.martenschaefer.data
 
 import de.martenschaefer.data.command.Command
-import de.martenschaefer.data.command.argument.CommandArgument
+import de.martenschaefer.data.command.argument.CommandArgument as Argument
 import de.martenschaefer.data.command.builder.CommandBuilder.*
 import de.martenschaefer.data.registry.impl.SimpleRegistry
 import de.martenschaefer.data.registry.{ Registry, RegistryKey }
