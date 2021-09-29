@@ -3,7 +3,8 @@ package de.martenschaefer.data.command.util
 import scala.annotation.tailrec
 import de.martenschaefer.data.command.Command
 import de.martenschaefer.data.command.argument.{ CommandArgument, FlagArgument }
-import de.martenschaefer.data.command.builder.CommandBuilder.{ Argument, Context, Function, build }
+import de.martenschaefer.data.command.builder.CommandBuilder
+import de.martenschaefer.data.command.builder.CommandBuilder.{ Argument, Context, Function }
 
 object CommandUtil {
     def createNextCommand[T](command: Command[T], nextCommand: List[String] => List[String]): Command[T] = new Command[T] {
@@ -45,7 +46,7 @@ object CommandUtil {
                 case _ => List(command(0))
             }
         else if (!command.isEmpty)
-            build(builder(value)).getSuggestions(command.tail)
+            CommandBuilder.build(builder(value)).getSuggestions(command.tail)
         else
             command
 
@@ -68,29 +69,37 @@ object CommandUtil {
         return hasFlags
     }
 
-    def removeFirstMatchingArgument[A](command: List[String], argument: Argument[A]): List[String] = {
-        for (i <- 0 until command.length)
-            if (argument.get(command(i)).isDefined)
-                return command.patch(i, Nil, 1)
+    def getPatchedFlag(shortFlag: Option[Char], argument: String): List[String] =
+        if (shortFlag.isDefined && argument.matches(FlagArgument.SHORT_FLAG_REGEX))
+            List(argument.replaceFirst(shortFlag.get.toString, "").transform(replaced =>
+                if ("-".equals(replaced)) return List.empty else replaced))
+        else
+            List.empty
+
+    def removeFlag[A](command: List[String], argument: Argument[A], shortFlag: Option[Char]): List[String] = {
+        for (i <- 0 until command.length) {
+            val commandPart = command(i)
+
+            if (argument.get(commandPart).isDefined)
+                return command.patch(i, getPatchedFlag(shortFlag, commandPart), 1)
+        }
 
         command
     }
 
-    def removeFlags[K](command: List[String], flags: Map[K, Argument[Unit]]): List[String] = {
+    def removeFlags[K](command: List[String], flags: List[(Argument[Unit], Option[Char])]): List[String] = {
         @tailrec
-        def loop(command: List[String], flag: Argument[Unit], remainingFlags: List[(K, Argument[Unit])]): List[String] =
+        def loop(command: List[String], flag: Argument[Unit], shortFlag: Option[Char], remainingFlags: List[(Argument[Unit], Option[Char])]): List[String] =
             remainingFlags match {
-                case head :: tail => loop(removeFirstMatchingArgument(command, flag), head._2, tail)
+                case head :: tail => loop(removeFlag(command, flag, shortFlag), head._1, head._2, tail)
 
-                case _ => removeFirstMatchingArgument(command, flag)
+                case _ => removeFlag(command, flag, shortFlag)
             }
 
-        val flagList = flags.toList
-
-        if (flagList.isEmpty)
+        if (flags.isEmpty)
             return command
 
-        loop(command, flagList.head._2, flagList.tail)
+        loop(command, flags.head._1, flags.head._2, flags.tail)
     }
 
     def getArgumentFlagResult[A](flagArgument: Argument[Unit], getter: String => Option[A], command: List[String]): Option[PosResult[A]] = {

@@ -9,8 +9,8 @@ class CommandFlagSuggestionsTest extends UnitSpec {
     val command: Command[String] = Command.build {
         literal("say") {
             argumentFlag("message", Some('m'), CommandArgument.string("message")) { message =>
-                argumentFlag("receiver", Some('r'), CommandArgument.string("receiver")) { receiver =>
-                    result(s"Said \"$message\" to $receiver.")
+                argumentFlag("person", Some('p'), CommandArgument.string("person")) { person =>
+                    result(s"Said \"$message\" to $person.")
                 }
             }
 
@@ -77,11 +77,11 @@ class CommandFlagSuggestionsTest extends UnitSpec {
     }
 
     they should "give correct suggestions for incomplete input (6)" in {
-        command.getSuggestions(List("say", "-m", "yes", "--r")) shouldBe List("--receiver")
+        command.getSuggestions(List("say", "-m", "yes", "--p")) shouldBe List("--person")
     }
 
     they should "give correct suggestions for incomplete input (7)" in {
-        command.getSuggestions(List("say", "-m", "yes", "-")) shouldBe List("--receiver", "-r", "--now")
+        command.getSuggestions(List("say", "-m", "yes", "-")) shouldBe List("--person", "-p", "--now")
     }
 
     they should "return an empty list for incorrect input (1)" in {

@@ -1,5 +1,7 @@
 package de.martenschaefer.data.command.argument
 
+import de.martenschaefer.data.command.argument.FlagArgument.SHORT_FLAG_REGEX
+
 class FlagArgument(val flag: String, val shortFlag: Option[Char] = None) extends CommandArgument[Unit] {
     override val name: String = this.flag
 
@@ -19,7 +21,7 @@ class FlagArgument(val flag: String, val shortFlag: Option[Char] = None) extends
                 List("--" + this.flag)
             else
                 List.empty
-        } else if (this.shortFlag.isDefined && argument.matches("-[a-z]+")
+        } else if (this.shortFlag.isDefined && argument.matches(SHORT_FLAG_REGEX)
             && !argument.matches("-[a-z]*=.*")) {
             if (argument.contains(this.shortFlag.get))
                 List(argument)
@@ -33,4 +35,8 @@ class FlagArgument(val flag: String, val shortFlag: Option[Char] = None) extends
         } else
             List.empty
     }
+}
+
+object FlagArgument {
+    val SHORT_FLAG_REGEX = "-[a-z]+"
 }
