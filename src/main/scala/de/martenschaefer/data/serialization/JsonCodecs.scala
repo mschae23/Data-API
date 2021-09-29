@@ -1,6 +1,7 @@
 package de.martenschaefer.data.serialization
 
 import com.google.gson.{ Gson, GsonBuilder, JsonElement, JsonParser }
+import de.martenschaefer.data.Result
 import de.martenschaefer.data.serialization.codec.GsonElementCodec
 import de.martenschaefer.data.serialization.{ Decoder, Element, Encoder }
 import de.martenschaefer.data.util.DataResult

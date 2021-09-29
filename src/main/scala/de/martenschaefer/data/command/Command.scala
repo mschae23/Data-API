@@ -1,6 +1,9 @@
 package de.martenschaefer.data.command
 
+import de.martenschaefer.data.Result
 import de.martenschaefer.data.command.builder.{ CommandBuilder, CommandBuilderContext }
+import de.martenschaefer.data.serialization.ElementError
+import de.martenschaefer.data.util.DataResult
 
 trait Command[+T] {
     /**
@@ -8,7 +11,7 @@ trait Command[+T] {
      * @param command The arguments for this command.
      * @return {@code Some(result)} if successful, otherwise {@code None}
      */
-    def run(command: List[String]): Option[T]
+    def run(command: List[String]): Result[T]
 
     /**
      * Returns a list of suggestions for the next command part.

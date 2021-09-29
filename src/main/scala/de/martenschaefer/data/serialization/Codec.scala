@@ -5,6 +5,7 @@ import cats._
 import cats.data._
 import cats.effect.kernel._
 import cats.syntax.all._
+import de.martenschaefer.data.Result
 import de.martenschaefer.data.registry.Registry
 import de.martenschaefer.data.serialization.Element._
 import de.martenschaefer.data.serialization.RecordParseError._
@@ -12,14 +13,6 @@ import de.martenschaefer.data.serialization.codec.{ AlternativeCodec, ArrayCodec
 import de.martenschaefer.data.util.{ DataResult, Lifecycle }
 import de.martenschaefer.data.util.DataResult._
 import shapeless3.deriving.{ K0, Labelling }
-
-/**
- * Can be used for errors when encoding or decoding.
- * Will be either a {@link List} of errors, or an object of type {@code T}.
- *
- * @tparam T Type of object in case of no errors.
- */
-type Result[T] = DataResult[List[ElementError], T]
 
 /**
  * Can encode objects of type {@code A} to objects of type {@code B}.

@@ -1,20 +1,23 @@
 package de.martenschaefer.data.test.command
 
 import de.martenschaefer.data.command.Command
-import de.martenschaefer.data.command.argument.CommandArgument
+import de.martenschaefer.data.command.argument.CommandArgument as Argument
+import de.martenschaefer.data.command.argument.CommandArgument.{ literal as literalArg, _ }
 import de.martenschaefer.data.command.builder.CommandBuilder.*
+import de.martenschaefer.data.command.util.CommandError.*
 import de.martenschaefer.data.test.UnitSpec
+import de.martenschaefer.data.util.DataResult.*
 
 class ArgumentFlagsTest extends UnitSpec {
     val command: Command[String] = Command.build {
         literal("say") {
-            argumentFlag("message", Some('m'), CommandArgument.string("message")) { message =>
-                argumentFlag("person", Some('p'), CommandArgument.string("person")) { person =>
+            argumentFlag("message", Some('m'), Argument.string("message")) { message =>
+                argumentFlag("person", Some('p'), Argument.string("person")) { person =>
                     result(s"Said \"$message\" to $person.")
                 }
 
-                argumentFlag("to", Some('t'), CommandArgument.string("to")) { to =>
-                    argumentFlag("number", Some('n'), CommandArgument.int("number")) { number =>
+                argumentFlag("to", Some('t'), Argument.string("to")) { to =>
+                    argumentFlag("number", Some('n'), Argument.int("number")) { number =>
                         literal("literal") {
                             result(s"Said $message to $to ($number)")
                         }
@@ -25,74 +28,89 @@ class ArgumentFlagsTest extends UnitSpec {
     }
 
     "Argument flags" should "work correctly with correct input (1)" in {
-        command.run(List("say", "--message", "Hello!", "--person", "someone")) shouldBe Some("Said \"Hello!\" to someone.")
+        command.run(List("say", "--message", "Hello!", "--person", "someone")) shouldBe Success("Said \"Hello!\" to someone.")
     }
 
     they should "work correctly with correct input (2)" in {
-        command.run(List("say", "-m", "Hello!", "-p", "someone")) shouldBe Some("Said \"Hello!\" to someone.")
+        command.run(List("say", "-m", "Hello!", "-p", "someone")) shouldBe Success("Said \"Hello!\" to someone.")
     }
 
     they should "work correctly with correct input (3)" in {
-        command.run(List("say", "--message=Hello", "-p", "someone")) shouldBe Some("Said \"Hello\" to someone.")
+        command.run(List("say", "--message=Hello", "-p", "someone")) shouldBe Success("Said \"Hello\" to someone.")
     }
 
     they should "work correctly with correct input (4)" in {
-        command.run(List("say", "-m=Hello", "-p", "someone")) shouldBe Some("Said \"Hello\" to someone.")
+        command.run(List("say", "-m=Hello", "-p", "someone")) shouldBe Success("Said \"Hello\" to someone.")
     }
 
     they should "work correctly with correct input (5)" in {
-        command.run(List("say", "-mp", "Hello", "someone")) shouldBe Some("Said \"Hello\" to someone.")
+        command.run(List("say", "-mp", "Hello", "someone")) shouldBe Success("Said \"Hello\" to someone.")
     }
 
     they should "work correctly with correct input (6)" in {
-        command.run(List("say", "-pm", "Hello", "someone")) shouldBe Some("Said \"Hello\" to someone.")
+        command.run(List("say", "-pm", "Hello", "someone")) shouldBe Success("Said \"Hello\" to someone.")
     }
 
     they should "work correctly with correct input (7)" in {
-        command.run(List("say", "-p", "someone else", "-m", "hello")) shouldBe Some("Said \"hello\" to someone else.")
+        command.run(List("say", "-p", "someone else", "-m", "hello")) shouldBe Success("Said \"hello\" to someone else.")
     }
 
     they should "work correctly with correct input (8)" in {
-        command.run(List("say", "-m", "hello", "--to", "something", "-n=5", "literal")) shouldBe Some("Said hello to something (5)")
+        command.run(List("say", "-m", "hello", "--to", "something", "-n=5", "literal")) shouldBe Success("Said hello to something (5)")
     }
 
     they should "work correctly with correct input (9)" in {
-        command.run(List("say", "-mtn", "hello", "something", "5", "literal")) shouldBe Some("Said hello to something (5)")
+        command.run(List("say", "-mtn", "hello", "something", "5", "literal")) shouldBe Success("Said hello to something (5)")
     }
 
     they should "work correctly with correct input (10)" in {
-        command.run(List("say", "-m", "hello", "--to", "something", "literal", "-n=5")) shouldBe Some("Said hello to something (5)")
+        command.run(List("say", "-m", "hello", "--to", "something", "literal", "-n=5")) shouldBe Success("Said hello to something (5)")
     }
 
     they should "work correctly with correct input (11)" in {
-        command.run(List("say", "-m", "hello", "literal", "--to", "something", "-n=5")) shouldBe Some("Said hello to something (5)")
+        command.run(List("say", "-m", "hello", "literal", "--to", "something", "-n=5")) shouldBe Success("Said hello to something (5)")
     }
 
     they should "work correctly with correct input (12)" in {
-        command.run(List("say", "literal", "-m=hello", "--to", "someone", "-n", "1")) shouldBe Some("Said hello to someone (1)")
+        command.run(List("say", "literal", "-m=hello", "--to", "someone", "-n", "1")) shouldBe Success("Said hello to someone (1)")
     }
 
     they should "fail for incorrect input (1)" in {
-        command.run(List("say", "--messag", "Hello!", "--person", "someone")) shouldBe None
+        command.run(List("say", "--messag", "Hello!", "--person", "someone")) shouldBe Failure(List(
+            FlagArgumentNotFoundError(List("--messag", "Hello!", "--person", "someone"), "message", string("message").name)
+        ))
     }
 
     they should "fail for incorrect input (2)" in {
-        command.run(List("say", "--message", "Hello!", "--p", "someone")) shouldBe None
+        command.run(List("say", "--message", "Hello!", "--p", "someone")) shouldBe Failure(List(
+            FlagArgumentNotFoundError(List("--p", "someone"), "person", string("person").name),
+            FlagArgumentNotFoundError(List("--p", "someone"), "to", string("to").name)
+        ))
     }
 
     they should "fail for incorrect input (3)" in {
-        command.run(List("say", "--message", "Hello!")) shouldBe None
+        command.run(List("say", "--message", "Hello!")) shouldBe Failure(List(
+            FlagArgumentNotFoundError(List.empty, "person", string("person").name),
+            FlagArgumentNotFoundError(List.empty, "to", string("to").name)
+        ))
     }
 
     they should "fail for incorrect input (4)" in {
-        command.run(List("say", "--message", "Hello!", "-p")) shouldBe None
+        command.run(List("say", "--message", "Hello!", "-p")) shouldBe Failure(List(
+            FlagArgumentNotFoundError(List("-p"), "person", string("person").name),
+            FlagArgumentNotFoundError(List("-p"), "to", string("to").name)
+        ))
     }
 
     they should "fail for incorrect input (5)" in {
-        command.run(List("say")) shouldBe None
+        command.run(List("say")) shouldBe Failure(List(
+            FlagArgumentNotFoundError(List.empty, "message", string("message").name)
+        ))
     }
 
     they should "fail for incorrect input (6)" in {
-        command.run(List("--message", "something", "say", "-t=someone", "n=9")) shouldBe None
+        command.run(List("--message", "something", "say", "-t=someone", "n=9")) shouldBe Failure(List(
+            ArgumentNotMatchedError(List("--message", "something", "say", "-t=someone", "n=9"), literalArg("say").name)
+        ))
     }
 }

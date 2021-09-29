@@ -1,9 +1,10 @@
 package de.martenschaefer.data.serialization.codec
 
 import scala.collection.immutable.ListMap
+import de.martenschaefer.data.Result
 import de.martenschaefer.data.serialization.Element._
 import de.martenschaefer.data.serialization.ElementError._
-import de.martenschaefer.data.serialization.{ Codec, Element, ElementError, ElementNode, FieldCodec, Result }
+import de.martenschaefer.data.serialization.{ Codec, Element, ElementError, ElementNode, FieldCodec }
 import de.martenschaefer.data.util.DataResult._
 import de.martenschaefer.data.util.{ DataResult, Lifecycle }
 

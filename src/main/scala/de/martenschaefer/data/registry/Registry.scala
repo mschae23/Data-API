@@ -1,7 +1,8 @@
 package de.martenschaefer.data.registry
 
+import de.martenschaefer.data.Result
 import de.martenschaefer.data.serialization.codec.RegistryElementCodec
-import de.martenschaefer.data.serialization.{ Codec, Element, ElementError, ElementNode, RecordParseError, Result, ValidationError }
+import de.martenschaefer.data.serialization.{ Codec, Element, ElementError, ElementNode, RecordParseError, ValidationError }
 import de.martenschaefer.data.util.DataResult.*
 import de.martenschaefer.data.util.{ Identifier, Lifecycle }
 import cats.effect.Sync

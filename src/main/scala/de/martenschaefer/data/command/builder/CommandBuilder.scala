@@ -1,9 +1,12 @@
 package de.martenschaefer.data.command.builder
 
-import scala.util.control.Breaks.break
+import de.martenschaefer.data.Result
 import de.martenschaefer.data.command.Command
 import de.martenschaefer.data.command.argument.CommandArgument
-import de.martenschaefer.data.command.util.CommandUtil
+import de.martenschaefer.data.command.util.{ CommandError, CommandUtil }
+import de.martenschaefer.data.serialization.ElementError
+import de.martenschaefer.data.util.DataResult.*
+import de.martenschaefer.data.util.Lifecycle
 
 object CommandBuilder {
     type Context[T] = CommandBuilderContext[T]
@@ -16,17 +19,28 @@ object CommandBuilder {
         val subCommands = context.subCommands.reverse
 
         new Command[T] {
-            override def run(command: List[String]): Option[T] = {
+            override def run(command: List[String]): Result[T] = {
+                var errors: List[ElementError] = List.empty
+                var lifecycle = Lifecycle.Stable
+
                 for (i <- 0 until subCommands.length) {
                     val subCommand = subCommands(i)
 
                     subCommand.run(command) match {
-                        case Some(commandResult) => return Some(commandResult)
-                        case _ =>
+                        case Success(commandResult, l) => return Success(commandResult, l)
+                        case Failure(e, l) => {
+                            errors = errors ::: e
+                            lifecycle += l
+                        }
                     }
                 }
 
-                None
+                Failure(errors.sortWith((error1, error2) => {
+                    if (!error1.isInstanceOf[CommandError] || !error2.isInstanceOf[CommandError])
+                        true
+                    else
+                        error1.asInstanceOf[CommandError].command.length < error2.asInstanceOf[CommandError].command.length
+                }), lifecycle)
             }
 
             override def getSuggestions(command: List[String]): List[String] = {
@@ -48,9 +62,9 @@ object CommandBuilder {
 
     def argument[T, A](argument: Argument[A])(builder: A => Function[T])(using context: Context[T]): Unit =
         context.subCommands ::= new Command[T] {
-            override def run(command: List[String]): Option[T] = {
+            override def run(command: List[String]): Result[T] = {
                 if (command.length < 1)
-                    return None;
+                    return Failure(List(CommandError.ArgumentNotMatchedError(command, argument.name)));
 
                 CommandUtil.forArgument(argument, command) { value =>
                     return build(builder(value)).run(command.tail)
@@ -70,7 +84,7 @@ object CommandBuilder {
 
     def optionalArgument[T, A](argument: Argument[A])(builder: Option[A] => Function[T])(using context: Context[T]): Unit =
         context.subCommands ::= new Command[T] {
-            override def run(command: List[String]): Option[T] = {
+            override def run(command: List[String]): Result[T] = {
                 CommandUtil.forArgument(argument, command) { value =>
                     return build(builder(Some(value))).run(command.tail)
                 }
@@ -105,7 +119,7 @@ object CommandBuilder {
         val argument = CommandArgument.flag(flag, shortFlag)
 
         context.subCommands ::= new Command[T] {
-            override def run(command: List[String]): Option[T] = {
+            override def run(command: List[String]): Result[T] = {
                 val (hasFlag, i, used) = CommandUtil.hasArgument(command, argument)
                 val flagPart = if (command.length <= i) "" else command(i)
                 val patchedArgument = CommandUtil.getPatchedFlag(shortFlag, flagPart)
@@ -139,7 +153,7 @@ object CommandBuilder {
         val flags2 = flags.map[(Argument[Unit], Option[Char])]((k, flag) => (flagArguments(k), flag._2)).toList
 
         context.subCommands ::= new Command[T] {
-            override def run(command: List[String]): Option[T] = {
+            override def run(command: List[String]): Result[T] = {
                 build(builder(CommandUtil.hasFlags(command, flagArguments)))
                     .run(CommandUtil.removeFlags(command, flags2))
             }
@@ -159,16 +173,16 @@ object CommandBuilder {
         val argument = CommandArgument.flag(flag, shortFlag)
 
         context.subCommands ::= new Command[T] {
-            override def run(command: List[String]): Option[T] = {
+            override def run(command: List[String]): Result[T] = {
                 if (command.isEmpty)
-                    return None;
+                    return Failure(List(CommandError.FlagNotFoundError(command, flag)));
 
                 val (hasFlag, i, used) = CommandUtil.hasArgument(command, argument)
 
                 if (hasFlag)
                     return build(builder).run(command.patch(i, CommandUtil.getPatchedFlag(shortFlag, command(i)), used))
 
-                None
+                Failure(List(CommandError.FlagNotFoundError(command, flag)))
             }
 
             override def getSuggestions(command: List[String]): List[String] = {
@@ -191,9 +205,9 @@ object CommandBuilder {
         val flagArgument = CommandArgument.flag(flag, shortFlag)
 
         context.subCommands ::= new Command[T] {
-            override def run(command: List[String]): Option[T] = {
+            override def run(command: List[String]): Result[T] = {
                 if (command.length < 1)
-                    return None;
+                    return Failure(List(CommandError.FlagArgumentNotFoundError(command, flag, argument.name)));
 
                 val resultArgument = CommandUtil.getArgumentFlagResult(flagArgument, argument.get(_), command)
 
@@ -206,7 +220,7 @@ object CommandBuilder {
                     return build(builder(result)).run(patchedCommand)
                 }
 
-                None
+                Failure(List(CommandError.FlagArgumentNotFoundError(command, flag, argument.name)))
             }
 
             override def getSuggestions(command: List[String]): List[String] = {

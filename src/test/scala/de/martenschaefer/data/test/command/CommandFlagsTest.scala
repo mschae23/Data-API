@@ -1,9 +1,12 @@
 package de.martenschaefer.data.test.command
 
 import de.martenschaefer.data.command.Command
-import de.martenschaefer.data.command.argument.CommandArgument
+import de.martenschaefer.data.command.argument.CommandArgument as Argument
+import de.martenschaefer.data.command.argument.CommandArgument.{ literal as literalArg, _ }
+import de.martenschaefer.data.command.util.CommandError.*
 import de.martenschaefer.data.command.builder.CommandBuilder.*
 import de.martenschaefer.data.test.UnitSpec
+import de.martenschaefer.data.util.DataResult.*
 
 class CommandFlagsTest extends UnitSpec {
     val command: Command[String] = Command.build {
@@ -24,7 +27,7 @@ class CommandFlagsTest extends UnitSpec {
                 result("Didn't test anything")
             }
 
-            argumentFlag("test-name", Some('n'), CommandArgument.string("test name")) { testName =>
+            argumentFlag("test-name", Some('n'), Argument.string("test name")) { testName =>
                 literal("now") {
                     result(s"Tested $testName now")
                 }
@@ -35,62 +38,82 @@ class CommandFlagsTest extends UnitSpec {
     }
 
     "a command" should "work correctly with correct input (1)" in {
-        command.run(List("do", "something")) shouldBe Some("Did something")
+        command.run(List("do", "something")) shouldBe Success("Did something")
     }
 
     it should "work correctly with correct input (2)" in {
-        command.run(List("do", "something", "--good")) shouldBe Some("Did something well")
+        command.run(List("do", "something", "--good")) shouldBe Success("Did something well")
     }
 
     it should "work correctly with correct input (3)" in {
-        command.run(List("do", "--good", "something")) shouldBe Some("Did something well")
+        command.run(List("do", "--good", "something")) shouldBe Success("Did something well")
     }
 
     it should "work correctly with correct input (4)" in {
-        command.run(List("do", "--nothing")) shouldBe Some("Did nothing")
+        command.run(List("do", "--nothing")) shouldBe Success("Did nothing")
     }
 
     it should "work correctly with correct input (5)" in {
-        command.run(List("test", "nothing")) shouldBe Some("Didn't test anything")
+        command.run(List("test", "nothing")) shouldBe Success("Didn't test anything")
     }
 
     it should "work correctly with correct input (6)" in {
-        command.run(List("test", "--test-name", "commands")) shouldBe Some("Tested commands")
+        command.run(List("test", "--test-name", "commands")) shouldBe Success("Tested commands")
     }
 
     it should "work correctly with correct input (7)" in {
-        command.run(List("test", "--test-name=commands")) shouldBe Some("Tested commands")
+        command.run(List("test", "--test-name=commands")) shouldBe Success("Tested commands")
     }
 
     it should "work correctly with correct input (8)" in {
-        command.run(List("test", "-n", "commands")) shouldBe Some("Tested commands")
+        command.run(List("test", "-n", "commands")) shouldBe Success("Tested commands")
     }
 
     it should "work correctly with correct input (9)" in {
-        command.run(List("test", "-n=commands")) shouldBe Some("Tested commands")
+        command.run(List("test", "-n=commands")) shouldBe Success("Tested commands")
     }
 
     it should "work correctly with correct input (10)" in {
-        command.run(List("test", "--test-name", "commands", "now")) shouldBe Some("Tested commands now")
+        command.run(List("test", "--test-name", "commands", "now")) shouldBe Success("Tested commands now")
     }
 
     it should "fail with incorrect input (1)" in {
-        command.run(List("do", "whatever")) shouldBe None
+        command.run(List("do", "whatever")) shouldBe Failure(List(
+            ArgumentNotMatchedError(List("whatever"), literalArg("something").name),
+            FlagNotFoundError(List("whatever"), "nothing"),
+            ArgumentNotMatchedError(List("do", "whatever"), literalArg("test").name)
+        ))
     }
 
     it should "fail with incorrect input (2)" in {
-        command.run(List("do", "nothing")) shouldBe None
+        command.run(List("do", "nothing")) shouldBe Failure(List(
+            ArgumentNotMatchedError(List("nothing"), literalArg("something").name),
+            FlagNotFoundError(List("nothing"), "nothing"),
+            ArgumentNotMatchedError(List("do", "nothing"), literalArg("test").name)
+        ))
     }
 
     it should "fail with incorrect input (3)" in {
-        command.run(List("do")) shouldBe None
+        command.run(List("do")) shouldBe Failure(List(
+            ArgumentNotMatchedError(List.empty, literalArg("something").name),
+            FlagNotFoundError(List.empty, "nothing"),
+            ArgumentNotMatchedError(List("do"), literalArg("test").name)
+        ))
     }
 
     it should "fail with incorrect input (4)" in {
-        command.run(List("test")) shouldBe None
+        command.run(List("test")) shouldBe Failure(List(
+            ArgumentNotMatchedError(List.empty, literalArg("nothing").name),
+            FlagArgumentNotFoundError(List.empty, "test-name", string("test name").name),
+            ArgumentNotMatchedError(List("test"), literalArg("do").name)
+        ))
     }
 
     it should "fail with incorrect input (5)" in {
-        command.run(List("test", "something")) shouldBe None
+        command.run(List("test", "something")) shouldBe Failure(List(
+            ArgumentNotMatchedError(List("something"), literalArg("nothing").name),
+            FlagArgumentNotFoundError(List("something"), "test-name", string("test name").name),
+            ArgumentNotMatchedError(List("test", "something"), literalArg("do").name)
+        ))
     }
 }

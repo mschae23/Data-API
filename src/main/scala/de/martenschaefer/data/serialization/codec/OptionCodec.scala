@@ -2,7 +2,8 @@ package de.martenschaefer.data.serialization.codec
 
 import cats.syntax.all._
 import cats.effect.Sync
-import de.martenschaefer.data.serialization.{ Codec, Element, ElementError, ElementNode, Result }
+import de.martenschaefer.data.Result
+import de.martenschaefer.data.serialization.{ Codec, Element, ElementError, ElementNode }
 import de.martenschaefer.data.util.DataResult._
 import de.martenschaefer.data.util.Lifecycle
 

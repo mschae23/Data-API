@@ -3,8 +3,9 @@ package de.martenschaefer.data.serialization.codec
 import scala.jdk.CollectionConverters.{ IterableHasAsScala, SetHasAsScala }
 import com.google.gson.internal.LazilyParsedNumber
 import com.google.gson.{ JsonArray, JsonElement, JsonNull, JsonObject, JsonPrimitive }
+import de.martenschaefer.data.Result
 import de.martenschaefer.data.serialization.Element._
-import de.martenschaefer.data.serialization.{ Codec, Element, ElementError, ElementNode, ParseError, RecordParseError, Result }
+import de.martenschaefer.data.serialization.{ Codec, Element, ElementError, ElementNode, ParseError, RecordParseError }
 import de.martenschaefer.data.util.DataResult._
 import de.martenschaefer.data.util.{ DataResult, Lifecycle, Utils }
 

@@ -1,14 +1,16 @@
 package de.martenschaefer.data.command.util
 
 import scala.annotation.tailrec
+import de.martenschaefer.data.Result
 import de.martenschaefer.data.command.Command
 import de.martenschaefer.data.command.argument.{ CommandArgument, FlagArgument }
 import de.martenschaefer.data.command.builder.CommandBuilder
 import de.martenschaefer.data.command.builder.CommandBuilder.{ Argument, Context, Function }
+import de.martenschaefer.data.util.DataResult.*
 
 object CommandUtil {
     def createNextCommand[T](command: Command[T], nextCommand: List[String] => List[String]): Command[T] = new Command[T] {
-        override def run(commandParts: List[String]): Option[T] =
+        override def run(commandParts: List[String]): Result[T] =
             command.run(nextCommand(commandParts))
 
         override def getSuggestions(commandParts: List[String]): List[String] =
@@ -16,24 +18,22 @@ object CommandUtil {
     }
 
     def createResultCommand[T](result: T): Command[T] = new Command[T] {
-        override def run(command: List[String]): Option[T] = {
-            if (command.isEmpty) Some(result)
-            else None
+        override def run(command: List[String]): Result[T] = {
+            if (command.isEmpty) Success(result)
+            else Failure(List(CommandError.CommandNonEmptyForResultError(command)))
         }
 
         override def getSuggestions(command: List[String]): List[String] = List.empty
     }
 
-    def runFor[A, T](option: Option[A])(f: A => T): Option[T] = option match {
-        case Some(value) => Some(f(value))
-
-        case None => None
-    }
-
-    def forArgument[A, T](argument: Argument[A], command: List[String])(f: A => T): Option[T] = {
+    def forArgument[A, T](argument: Argument[A], command: List[String])(f: A => T): Result[T] = {
         val nextCommand = if (command.isEmpty) "" else command(0)
 
-        runFor(argument.get(nextCommand))(f)
+        argument.get(nextCommand) match {
+            case Some(value) => Success(f(value))
+
+            case _ => Failure(List(CommandError.ArgumentNotMatchedError(command, argument.name)))
+        }
     }
 
     def getSuggestionsForMatchingArgument[T, A](command: List[String],

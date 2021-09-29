@@ -1,7 +1,8 @@
 package de.martenschaefer.data.command.argument
 
+import de.martenschaefer.data.Result
 import de.martenschaefer.data.registry.Registry
-import de.martenschaefer.data.util.Identifier
+import de.martenschaefer.data.util.{ Identifier, Lifecycle }
 
 trait CommandArgument[+T] {
     val name: String
@@ -27,9 +28,11 @@ object CommandArgument {
     def string(name: String): CommandArgument[String] = new ValueCommandArgument(name, Some(_))
 
     def int(name: String): CommandArgument[Int] = new ValueCommandArgument(name, _.toIntOption)
+
     def long(name: String): CommandArgument[Long] = new ValueCommandArgument(name, _.toLongOption)
 
     def float(name: String): CommandArgument[Float] = new ValueCommandArgument(name, _.toFloatOption)
+
     def double(name: String): CommandArgument[Double] = new ValueCommandArgument(name, _.toDoubleOption)
 
     def boolean(name: String): CommandArgument[Boolean] = new ValueCommandArgument(name, _.toBooleanOption)

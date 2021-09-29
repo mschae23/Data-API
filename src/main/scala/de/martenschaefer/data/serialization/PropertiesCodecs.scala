@@ -4,6 +4,7 @@ import java.io.{ StringReader, StringWriter }
 import java.util.Properties
 import scala.annotation.tailrec
 import scala.jdk.CollectionConverters
+import de.martenschaefer.data.Result
 import de.martenschaefer.data.util.DataResult._
 import de.martenschaefer.data.util.{ DataResult, Utils }
 

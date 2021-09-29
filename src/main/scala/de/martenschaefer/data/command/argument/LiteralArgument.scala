@@ -1,7 +1,7 @@
 package de.martenschaefer.data.command.argument
 
 class LiteralArgument(val literal: String, val ignoreCase: Boolean = false) extends CommandArgument[Unit] {
-    override val name: String = this.literal
+    override val name: String = s"literal \"$literal\""
 
     override def get(argument: String): Option[Unit] =
         if (this.matches(argument))
