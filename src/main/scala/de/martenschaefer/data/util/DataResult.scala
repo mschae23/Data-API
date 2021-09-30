@@ -63,8 +63,7 @@ enum DataResult[+L, +R](val lifecycle: Lifecycle) {
         case _ => this
     }
 
-    @deprecated
-    def flatOrElse[L1 >: L, R1](alternative: => DataResult[L1, R1]): DataResult[L1, R1] = this match {
+    def flatOrElse[L1 >: L, R1 >: R](alternative: => DataResult[L1, R1]): DataResult[L1, R1] = this match {
         case Failure(_, _) => alternative
         case _ => this.asInstanceOf[DataResult[L1, R1]]
     }
@@ -150,9 +149,9 @@ enum DataResult[+L, +R](val lifecycle: Lifecycle) {
 }
 
 import scala.annotation.tailrec
-import cats.{ ~>, Applicative, Monad, MonadError, Monoid, Parallel }
 import cats.arrow.FunctionK
-import cats.syntax.monoid._
+import cats.syntax.monoid.*
+import cats.{ Applicative, Monad, MonadError, Monoid, Parallel, ~> }
 
 object DataResult {
     given[L]: MonadError[[R] =>> DataResult[L, R], L] with {

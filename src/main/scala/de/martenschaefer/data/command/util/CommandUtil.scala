@@ -36,6 +36,14 @@ object CommandUtil {
         }
     }
 
+    def getArgumentSuggestions[A, T](command: List[String], argument: Argument[A], builder: A => Function[T]): List[String] = {
+        CommandUtil.forArgument(argument, command) { value =>
+            return CommandUtil.getSuggestionsForMatchingArgument(command, argument, value, builder)
+        }
+
+        argument.getSuggestions(CommandUtil.getArgumentPart(command, 0))
+    }
+
     def getSuggestionsForMatchingArgument[T, A](command: List[String],
                                                 argument: Argument[A],
                                                 value: A, builder: A => Function[T]): List[String] =
@@ -49,6 +57,8 @@ object CommandUtil {
             CommandBuilder.build(builder(value)).getSuggestions(command.tail)
         else
             command
+
+    def getArgumentPart(command: List[String], i: Int): String = if (command.length <= i) "" else command(i)
 
     type PosResult[T] = (T, Int, Int)
 
@@ -67,6 +77,15 @@ object CommandUtil {
                 hasFlags = hasFlags.updated(k, true))
 
         return hasFlags
+    }
+
+    def forFlagSuggestion(command: List[String],
+                          hasFlag: Boolean, i: Int, used: Int, useLastPart: Boolean,
+                          flag: Argument[Unit])(f: List[String] => List[String]): List[String] = {
+        if (!hasFlag || command.drop(i + used).isEmpty) {
+            f(flag.getSuggestions(CommandUtil.getArgumentPart(command, if (useLastPart) command.length - 1 else i)))
+        } else
+            List.empty
     }
 
     def getPatchedFlag(shortFlag: Option[Char], argument: String): List[String] =
@@ -124,6 +143,22 @@ object CommandUtil {
         None
     }
 
+    def getArgumentFlag[T, A](command: List[String], flag: String, shortFlag: Option[Char], flagArgument: Argument[Unit], argument: Argument[A],
+                              builder: A => Function[T]): Result[T] = {
+        val resultArgument = CommandUtil.getArgumentFlagResult(flagArgument, argument.get(_), command)
+
+        for ((result, i, used) <- resultArgument) {
+            val patchedCommand = if (used == 2) {
+                val patchedArgument = CommandUtil.getPatchedFlag(shortFlag, command(i))
+                command.patch(i, patchedArgument, used)
+            } else command.patch(i, Nil, used)
+
+            return CommandBuilder.build(builder(result)).run(patchedCommand)
+        }
+
+        Failure(List(CommandError.FlagArgumentNotFoundError(command, flag, argument.name)))
+    }
+
     def getArgumentFlagSuggestions(flagArgument: Argument[Unit], getter: String => List[String],
                                    commandParts: List[String], command: List[String]): List[String] = {
         if (commandParts.length > 0 && commandParts.length <= 2) {
@@ -141,5 +176,29 @@ object CommandUtil {
         }
 
         List.empty
+    }
+
+    def getArgumentFlagSuggestions[A](command: List[String], flagArgument: Argument[Unit], shortFlag: Option[Char], argument: Argument[A],
+                                      suggestions: (Option[A], List[String]) => List[String]): List[String] = {
+        val (hasFlag, i, used) = CommandUtil.hasArgument(command, flagArgument)
+
+        val commandPart = if (command.isEmpty) "" else command(i)
+        val commandParts = commandPart.split("=").toList
+
+        val flagSuggestions =
+            CommandUtil.getArgumentFlagSuggestions(flagArgument, argument.getSuggestions(_), commandParts, command)
+
+        val resultArgument = CommandUtil.getArgumentFlagResult(flagArgument, argument.get(_), command)
+
+        for ((result, i, used) <- resultArgument) {
+            val patchedCommand = if (used == 2) {
+                val patchedArgument = CommandUtil.getPatchedFlag(shortFlag, command(i))
+                command.patch(i, patchedArgument, used)
+            } else command.patch(i, Nil, used)
+
+            return flagSuggestions ::: suggestions(Some(result), patchedCommand)
+        }
+
+        flagSuggestions ::: suggestions(None, command)
     }
 }
