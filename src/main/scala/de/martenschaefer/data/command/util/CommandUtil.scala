@@ -70,7 +70,7 @@ object CommandUtil {
     }
 
     def hasFlags[K](command: List[String], flags: Map[K, Argument[Unit]]): Map[K, Boolean] = {
-        var hasFlags: Map[K, Boolean] = Map.empty.default(false)
+        var hasFlags: Map[K, Boolean] = Map.empty.withDefaultValue(false)
 
         for (commandPart <- command)
             flags.foreach((k, argument) => if (argument.get(commandPart).isDefined)
