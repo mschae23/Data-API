@@ -527,6 +527,7 @@ object Codec {
      * Instance of {@code Codec} for {@code Float}.
      */
     given Codec[Float] = new PrimitiveCodec(FloatElement(_), _ match {
+        case IntElement(value) => Success(value.toFloat)
         case FloatElement(value) => Success(value)
         case element => Failure(List(NotAFloat(element, List.empty)))
     })
@@ -535,6 +536,7 @@ object Codec {
      * Instance of {@code Codec} for {@code Double}.
      */
     given Codec[Double] = new PrimitiveCodec(DoubleElement(_), _ match {
+        case IntElement(value) => Success(value.toDouble)
         case FloatElement(value) => Success(value.toDouble)
         case DoubleElement(value) => Success(value)
         case element => Failure(List(NotADouble(element, List.empty)))
