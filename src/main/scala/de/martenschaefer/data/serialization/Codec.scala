@@ -175,7 +175,7 @@ trait Codec[T] extends AbstractCodec[T, Element, Result, Result] {
      * @tparam B The new type.
      * @return The created {@code Codec}
      */
-    def flatXmap[B](to: (T, Element) => Result[B])(from: B => Result[T]): Codec[B] = new Codec[B] {
+    def flatXmap[B](to: T => Result[B])(from: B => Result[T]): Codec[B] = new Codec[B] {
         def encodeElement(value: B): Result[Element] =
             from(value).flatMapWithLifecycle((t, l) => self.encodeElement(t).addLifecycle(l))
 
@@ -188,11 +188,11 @@ trait Codec[T] extends AbstractCodec[T, Element, Result, Result] {
         } yield encoded
 
         def decodeElement(element: Element): Result[B] =
-            self.decodeElement(element).flatMapWithLifecycle((b, l) => to(b, element).addLifecycle(l))
+            self.decodeElement(element).flatMapWithLifecycle((b, l) => to(b).addLifecycle(l))
 
         override def decodeElementIO[F[_]: Sync](element: Element): F[Result[B]] = for {
             elementResult <- self.decodeElementIO(element)
-            resultB <- Sync[F].delay(elementResult.flatMapWithLifecycle((b, l) => to(b, element).withLifecycle(l)))
+            resultB <- Sync[F].delay(elementResult.flatMapWithLifecycle((b, l) => to(b).withLifecycle(l)))
         } yield resultB
 
         override val lifecycle: Lifecycle = self.lifecycle

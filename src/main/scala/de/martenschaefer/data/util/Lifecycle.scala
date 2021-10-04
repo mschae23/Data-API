@@ -1,7 +1,7 @@
 package de.martenschaefer.data.util
 
-import de.martenschaefer.data.serialization.{ Codec, EitherError, RecordParseError }
-import de.martenschaefer.data.util.DataResult._
+import de.martenschaefer.data.serialization.{ Codec, EitherError, ValidationError }
+import de.martenschaefer.data.util.DataResult.*
 
 enum Lifecycle {
     case Stable
@@ -26,11 +26,11 @@ object Lifecycle {
 
     given Codec[Lifecycle.Deprecated] = Codec[Int].fieldOf("deprecated_since").xmap[Lifecycle.Deprecated](Lifecycle.Deprecated(_))(_.since)
 
-    given Codec[Lifecycle] = Codec[Either[String, Lifecycle.Deprecated]].flatXmap((either, element) => either match {
+    given Codec[Lifecycle] = Codec[Either[String, Lifecycle.Deprecated]].flatXmap(either => either match {
         case Left(name) => name match {
             case "stable" => Success(Lifecycle.Stable)
             case "experimental" => Success(Lifecycle.Experimental)
-            case _ => Failure(List(RecordParseError.ValidationParseError(EitherError.message, element, List.empty)))
+            case _ => Failure(List(ValidationError(EitherError.message, List.empty)))
         }
         case Right(deprecated) => Success(deprecated)
     })(_ match {
