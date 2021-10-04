@@ -139,7 +139,7 @@ case class AlternativeError(val errors: List[List[ElementError]],
         s"$path: Multiple alternatives failed: " + this.errors.map(_.map(_.getDescription))
 
     override def mapPath(f: List[ElementNode] => List[ElementNode]): ElementError =
-        AlternativeError(this.errors, f(this.path))
+        AlternativeError(this.errors.map(_.map(_.mapPath(f))), f(this.path))
 }
 
 case class NullElementError(override val path: List[ElementNode]) extends ElementError(path) {
