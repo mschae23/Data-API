@@ -143,19 +143,19 @@ object Registry {
         def register(id: Identifier) =
             registry.register(id, t)
 
-    case class UnknownRegistryElementError[T](val element: T, override val path: List[ElementNode] = List()) extends ElementError(path) {
+    case class UnknownRegistryElementError[T](val element: T, override val path: List[ElementNode] = List.empty) extends ElementError(path) {
         override def getDescription(path: String): String =
             s"$path: Unknown registry element: $element"
 
-        override def withPrependedPath(prependedPath: ElementNode): ElementError =
-            UnknownRegistryElementError(this.element, prependedPath :: this.path)
+        override def mapPath(f: List[ElementNode] => List[ElementNode]): ElementError =
+            UnknownRegistryElementError(this.element, f(this.path))
     }
 
-    case class UnknownRegistryIdError(val element: Element, override val path: List[ElementNode] = List()) extends ElementError(path) {
+    case class UnknownRegistryIdError(val element: Element, override val path: List[ElementNode] = List.empty) extends ElementError(path) {
         override def getDescription(path: String): String =
             s"$path: Unknown registry ID: $element"
 
-        override def withPrependedPath(prependedPath: ElementNode): ElementError =
-            UnknownRegistryIdError(this.element, prependedPath :: this.path)
+        override def mapPath(f: List[ElementNode] => List[ElementNode]): ElementError =
+            UnknownRegistryIdError(this.element, f(this.path))
     }
 }

@@ -41,18 +41,20 @@ enum CommandError(val command: List[String]) extends ElementError(command.map(El
         case _ => getDescription
     }
 
-    def withPrependedPath(prependedPath: ElementNode): CommandError = {
-        if (prependedPath.isInstanceOf[ElementNode.Index])
-            throw new IllegalArgumentException(s"Command node can't be an index: $prependedPath")
+    override def mapPath(f: List[ElementNode] => List[ElementNode]): ElementError = {
+        val mappedPath = f(this.path)
 
-        val node = prependedPath.asInstanceOf[ElementNode.Name].name
+        if (mappedPath.exists(_.isInstanceOf[ElementNode.Index]))
+            throw new IllegalArgumentException(s"Command errors don't support indices in paths, only names")
+
+        val mappedStringPath = mappedPath.map(_.asInstanceOf[ElementNode.Name].name)
 
         this match {
-            case ArgumentNotMatchedError(command, argument) => ArgumentNotMatchedError(node :: command, argument)
-            case FlagNotFoundError(command, flag) => FlagNotFoundError(node :: command, flag)
-            case FlagArgumentNotFoundError(command, flag, argument) => FlagArgumentNotFoundError(node :: command, flag, argument)
-            case CommandNonEmptyForResultError(command) => CommandNonEmptyForResultError(node :: command)
-            case NoMatchingSubcommandsError(command, errors) => NoMatchingSubcommandsError(node :: command, errors)
+            case ArgumentNotMatchedError(command, argument) => ArgumentNotMatchedError(mappedStringPath, argument)
+            case FlagNotFoundError(command, flag) => FlagNotFoundError(mappedStringPath, flag)
+            case FlagArgumentNotFoundError(command, flag, argument) => FlagArgumentNotFoundError(mappedStringPath, flag, argument)
+            case CommandNonEmptyForResultError(command) => CommandNonEmptyForResultError(mappedStringPath)
+            case NoMatchingSubcommandsError(command, errors) => NoMatchingSubcommandsError(mappedStringPath, errors)
         }
     }
 

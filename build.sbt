@@ -5,7 +5,7 @@ lazy val root = project
     .settings(
         name := "data-api",
         organization := "de.martenschaefer",
-        version := "4.0.2",
+        version := "5.0.0",
         homepage := Some(url("https://github.com/mschae23/data-api")),
 
         scalaVersion := scala3Version,
@@ -23,7 +23,7 @@ lazy val root = project
         ),
 
         resolvers ++= Seq(
-            "GitHub Package Registry (mschae23/Data-API)" at "https://maven.pkg.github.com/mschae23/data-api",
+            "GitHub Package Registry (mschae23/data-api)" at "https://maven.pkg.github.com/mschae23/data-api",
             Resolver.sonatypeRepo("releases"),
             Resolver.sonatypeRepo("snapshots")
         ),

@@ -1,16 +1,16 @@
 package de.martenschaefer.data.serialization.codec
 
-import cats.syntax.all._
+import cats.syntax.all.*
 import cats.effect.Sync
 import de.martenschaefer.data.Result
-import de.martenschaefer.data.serialization.{ Codec, Element }
+import de.martenschaefer.data.serialization.{ AlternativeError, Codec, Element }
 import de.martenschaefer.data.util.Lifecycle
-import de.martenschaefer.data.util.DataResult._
+import de.martenschaefer.data.util.DataResult.*
 
-class AlternativeCodec[T](codec: Codec[T], alternative: Codec[T]) extends Codec[T] {
+class AlternativeCodec[T](val codec: Codec[T], val alternative: Codec[T]) extends Codec[T] {
     override def encodeElement(value: T): Result[Element] = this.codec.encodeElement(value) match {
         case Failure(errors, l) => this.alternative.encodeElement(value) match {
-            case Failure(_, _) => Failure(errors, l)
+            case Failure(errors2, l2) => Failure(List(AlternativeError(List(errors, errors2), List.empty)), l + l2)
             case result => result
         }
 
@@ -21,7 +21,7 @@ class AlternativeCodec[T](codec: Codec[T], alternative: Codec[T]) extends Codec[
         encoded <- this.codec.encodeElementIO(value)
         encodedWithAlternative <- encoded match {
             case Failure(errors, l) => this.alternative.encodeElementIO(value).map(_ match {
-                case Failure(_, _) => Failure(errors, l)
+                case Failure(errors2, l2) => Failure(List(AlternativeError(List(errors, errors2), List.empty)), l + l2)
                 case result => result
             })
             case result => Sync[F].pure(result)
@@ -30,7 +30,7 @@ class AlternativeCodec[T](codec: Codec[T], alternative: Codec[T]) extends Codec[
 
     override def decodeElement(element: Element): Result[T] = this.codec.decodeElement(element) match {
         case Failure(errors, l) => this.alternative.decodeElement(element) match {
-            case Failure(_, _) => Failure(errors, l)
+            case Failure(errors2, l2) => Failure(List(AlternativeError(List(errors, errors2), List.empty)), l + l2)
             case result => result
         }
 
@@ -41,7 +41,7 @@ class AlternativeCodec[T](codec: Codec[T], alternative: Codec[T]) extends Codec[
         decoded <- this.codec.decodeElementIO(element)
         decodedWithAlternative <- decoded match {
             case Failure(errors, l) => this.alternative.decodeElementIO(element).map(_ match {
-                case Failure(_, _) => Failure(errors, l)
+                case Failure(errors2, l2) => Failure(List(AlternativeError(List(errors, errors2), List.empty)), l + l2)
                 case result => result
             })
             case result => Sync[F].pure(result)
