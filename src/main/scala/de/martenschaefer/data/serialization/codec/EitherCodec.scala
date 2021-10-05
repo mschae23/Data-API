@@ -2,13 +2,13 @@ package de.martenschaefer.data.serialization.codec
 
 import de.martenschaefer.data.Result
 import de.martenschaefer.data.serialization.Element.*
-import de.martenschaefer.data.serialization.{ Codec, Element, ElementError, ElementNode, RecordParseError }
+import de.martenschaefer.data.serialization.{ AlternativeError, Codec, Element, ElementError, ElementNode, RecordParseError }
 import de.martenschaefer.data.util.DataResult.*
 import de.martenschaefer.data.util.{ DataResult, Lifecycle }
 import cats.effect.Sync
 import cats.syntax.all.*
 
-class EitherCodec[L: Codec, R: Codec](val errorMessage: String => String) extends Codec[Either[L, R]] {
+class EitherCodec[L: Codec, R: Codec] extends Codec[Either[L, R]] {
     override def encodeElement(option: Either[L, R]): Result[Element] = option match {
         case Left(value) => Codec[L].encodeElement(value)
         case Right(value) => Codec[R].encodeElement(value)
@@ -22,9 +22,9 @@ class EitherCodec[L: Codec, R: Codec](val errorMessage: String => String) extend
     override def decodeElement(element: Element): Result[Either[L, R]] = Codec[L].decodeElement(element) match {
         case Success(value, l) => Success(Left(value), l)
         case Failure(errors, l) => Codec[R].decodeElement(element) match {
-            case Success(value, l2) => Success(Right(value), l + l2)
+            case Success(value, l2) => Success(Right(value), l2)
             case Failure(errors2, l2) => Failure(
-                List(RecordParseError.EitherParseError(this.errorMessage, element, List())), l + l2)
+                List(AlternativeError(List(errors, errors2), List.empty)), l + l2)
         }
     }
 
@@ -33,9 +33,9 @@ class EitherCodec[L: Codec, R: Codec](val errorMessage: String => String) extend
         result <- resultL match {
             case Success(value, l) => Sync[F].pure(Success(Left(value), l))
             case Failure(errors, l) => Codec[R].decodeElementIO(element).map(_ match {
-                case Success(value, l2) => Success(Right(value), l + l2)
+                case Success(value, l2) => Success(Right(value), l2)
                 case Failure(errors2, l2) => Failure(
-                    List(RecordParseError.EitherParseError(this.errorMessage, element, List())), l + l2)
+                    List(AlternativeError(List(errors, errors2), List.empty)), l + l2)
             })
         }
     } yield result

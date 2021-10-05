@@ -120,6 +120,7 @@ enum RecordParseError(val element: Element, override val path: List[ElementNode]
     override def getDescription: String = super.getDescription + s": $element"
 }
 
+@deprecated
 case class EitherError(val message: String => String) extends ElementError(List.empty) {
     override def getDescription(path: String): String = this.message(path)
 
@@ -127,6 +128,7 @@ case class EitherError(val message: String => String) extends ElementError(List.
         RecordParseError.EitherParseError(this.message, Element.None, f(List.empty))
 }
 
+@deprecated
 object EitherError {
     def apply(using e: EitherError): EitherError = e
 

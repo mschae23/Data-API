@@ -13,7 +13,7 @@ enum Lifecycle {
             case Lifecycle.Experimental => Lifecycle.Experimental
             case _ if other == Lifecycle.Experimental => Lifecycle.Experimental
             case Lifecycle.Deprecated(since) if other.isInstanceOf[Lifecycle.Deprecated]
-              && other.asInstanceOf[Lifecycle.Deprecated].since < since => other
+                && other.asInstanceOf[Lifecycle.Deprecated].since < since => other
             case Lifecycle.Deprecated(_) => this
             case _ if other.isInstanceOf[Lifecycle.Deprecated] => other
             case _ => Lifecycle.Stable
@@ -21,21 +21,22 @@ enum Lifecycle {
 }
 
 object Lifecycle {
-    private given EitherError =
-        EitherError(path => s"$path should be \"stable\", \"experimental\" or an object with a \"deprecated_since\" field")
-
     given Codec[Lifecycle.Deprecated] = Codec[Int].fieldOf("deprecated_since").xmap[Lifecycle.Deprecated](Lifecycle.Deprecated(_))(_.since)
 
-    given Codec[Lifecycle] = Codec[Either[String, Lifecycle.Deprecated]].flatXmap(either => either match {
-        case Left(name) => name match {
-            case "stable" => Success(Lifecycle.Stable)
-            case "experimental" => Success(Lifecycle.Experimental)
-            case _ => Failure(List(ValidationError(EitherError.message, List.empty)))
-        }
-        case Right(deprecated) => Success(deprecated)
-    })(_ match {
-        case Lifecycle.Stable => Success(Left("stable"))
-        case Lifecycle.Experimental => Success(Left("experimental"))
-        case Lifecycle.Deprecated(since) => Success(Right(Lifecycle.Deprecated(since)))
+    private val deprecatedCodec: Codec[Lifecycle] = Codec[Lifecycle.Deprecated].flatXmap(Success(_))(_ match {
+        case deprecated: Lifecycle.Deprecated => Success(deprecated)
+        case _ => Failure(List(ValidationError(path => s"$path: Lifecycle is not deprecated", List.empty)))
     })
+
+    private val stableOrExperimentalCodec: Codec[Lifecycle] = Codec[String].flatXmap(name => name match {
+        case "stable" => Success(Lifecycle.Stable)
+        case "experimental" => Success(Lifecycle.Experimental)
+        case _ => Failure(List(ValidationError(path => s"$path: \"$name\" is neither \"stable\" nor \" experimental\"", List.empty)))
+    })(_ match {
+        case Lifecycle.Stable => Success("stable")
+        case Lifecycle.Experimental => Success("experimental")
+        case _ => Failure(List(ValidationError(path => s"$path: Lifecycle is not stable or experimental", List.empty)))
+    })
+
+    given Codec[Lifecycle] = Codec.alternatives(List(stableOrExperimentalCodec, deprecatedCodec))
 }

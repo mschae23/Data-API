@@ -1,52 +1,69 @@
 package de.martenschaefer.data.serialization.codec
 
-import cats.syntax.all.*
-import cats.effect.Sync
 import de.martenschaefer.data.Result
-import de.martenschaefer.data.serialization.{ AlternativeError, Codec, Element }
-import de.martenschaefer.data.util.Lifecycle
+import de.martenschaefer.data.serialization.{ AlternativeError, Codec, Element, ElementError }
 import de.martenschaefer.data.util.DataResult.*
+import de.martenschaefer.data.util.Lifecycle
+import cats.effect.Sync
+import cats.syntax.all.*
 
-class AlternativeCodec[T](val codec: Codec[T], val alternative: Codec[T]) extends Codec[T] {
-    override def encodeElement(value: T): Result[Element] = this.codec.encodeElement(value) match {
-        case Failure(errors, l) => this.alternative.encodeElement(value) match {
-            case Failure(errors2, l2) => Failure(List(AlternativeError(List(errors, errors2), List.empty)), l + l2)
-            case result => result
+class AlternativeCodec[T](val codecs: List[Codec[T]]) extends Codec[T] {
+    override def encodeElement(value: T): Result[Element] = {
+        var errors: List[List[ElementError]] = List.empty
+        var lifecycle = Lifecycle.Stable
+
+        for (codec <- this.codecs) {
+            codec.encodeElement(value) match {
+                case result@Success(_, _) => return result
+
+                case Failure(codecErrors, l) => {
+                    errors ::= codecErrors
+                    lifecycle += l
+                }
+            }
         }
 
-        case result => result
+        Failure(List(AlternativeError(errors.reverse, List.empty)), lifecycle)
     }
 
-    override def encodeElementIO[F[_]: Sync](value: T): F[Result[Element]] = for {
-        encoded <- this.codec.encodeElementIO(value)
-        encodedWithAlternative <- encoded match {
-            case Failure(errors, l) => this.alternative.encodeElementIO(value).map(_ match {
-                case Failure(errors2, l2) => Failure(List(AlternativeError(List(errors, errors2), List.empty)), l + l2)
-                case result => result
-            })
-            case result => Sync[F].pure(result)
-        }
-    } yield encodedWithAlternative
+    override def encodeElementIO[F[_] : Sync](value: T): F[Result[Element]] = for {
+        encoded <- this.codecs.map(_.encodeElementIO(value)).sequence
+        errors <- Sync[F].delay(encoded.foldLeft((List.empty[List[ElementError]], Lifecycle.Stable))((acc, encodedElement) =>
+            encodedElement match {
+                case result @ Success(_, _) => return Sync[F].pure(result)
 
-    override def decodeElement(element: Element): Result[T] = this.codec.decodeElement(element) match {
-        case Failure(errors, l) => this.alternative.decodeElement(element) match {
-            case Failure(errors2, l2) => Failure(List(AlternativeError(List(errors, errors2), List.empty)), l + l2)
-            case result => result
+                case Failure(errors, l) => (errors :: acc._1, acc._2 + l)
+            }))
+    } yield Failure(List(AlternativeError(errors._1.reverse, List.empty)), lifecycle)
+
+    override def decodeElement(element: Element): Result[T] = {
+        var errors: List[List[ElementError]] = List.empty
+        var lifecycle = Lifecycle.Stable
+
+        for (codec <- this.codecs) {
+            codec.decodeElement(element) match {
+                case result@Success(_, _) => return result
+
+                case Failure(codecErrors, l) => {
+                    errors ::= codecErrors
+                    lifecycle += l
+                }
+            }
         }
 
-        case result => result
+        Failure(List(AlternativeError(errors.reverse, List.empty)), lifecycle)
     }
 
     override def decodeElementIO[F[_]: Sync](element: Element): F[Result[T]] = for {
-        decoded <- this.codec.decodeElementIO(element)
-        decodedWithAlternative <- decoded match {
-            case Failure(errors, l) => this.alternative.decodeElementIO(element).map(_ match {
-                case Failure(errors2, l2) => Failure(List(AlternativeError(List(errors, errors2), List.empty)), l + l2)
-                case result => result
-            })
-            case result => Sync[F].pure(result)
-        }
-    } yield decodedWithAlternative
+        decoded <- this.codecs.map(_.decodeElementIO(element)).sequence
+        errors <- Sync[F].delay(decoded.foldLeft((List.empty[List[ElementError]], Lifecycle.Stable))((acc, decodedElement) =>
+            decodedElement match {
+                case result @ Success(_, _) => return Sync[F].pure(result)
 
-    override val lifecycle: Lifecycle = this.codec.lifecycle + this.alternative.lifecycle
+                case Failure(errors, l) => (errors :: acc._1, acc._2 + l)
+            }))
+    } yield Failure(List(AlternativeError(errors._1.reverse, List.empty)), lifecycle)
+
+    override val lifecycle: Lifecycle =
+        this.codecs.foldLeft(Lifecycle.Stable)((lifecycle, codec) => lifecycle + codec.lifecycle)
 }

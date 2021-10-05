@@ -5,7 +5,7 @@ lazy val root = project
     .settings(
         name := "data-api",
         organization := "de.martenschaefer",
-        version := "5.0.1",
+        version := "5.1.0",
         homepage := Some(url("https://github.com/mschae23/data-api")),
 
         scalaVersion := scala3Version,
@@ -14,7 +14,7 @@ lazy val root = project
             "org.typelevel" %% "cats-core" % "2.6.1",
             "org.typelevel" %% "cats-effect" % "3.2.8",
 
-            "org.typelevel" %% "shapeless3-deriving" % "3.0.1",
+            "org.typelevel" %% "shapeless3-deriving" % "3.0.3",
 
             "com.google.code.gson" % "gson" % "2.8.8",
 

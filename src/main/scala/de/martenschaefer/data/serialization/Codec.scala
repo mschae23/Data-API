@@ -1,17 +1,17 @@
 package de.martenschaefer.data.serialization
 
 import scala.collection.mutable.{ Buffer, ListBuffer }
-import cats._
-import cats.data._
-import cats.effect.kernel._
-import cats.syntax.all._
 import de.martenschaefer.data.Result
 import de.martenschaefer.data.registry.Registry
-import de.martenschaefer.data.serialization.Element._
-import de.martenschaefer.data.serialization.RecordParseError._
+import de.martenschaefer.data.serialization.Element.*
+import de.martenschaefer.data.serialization.RecordParseError.*
 import de.martenschaefer.data.serialization.codec.{ AlternativeCodec, ArrayCodec, DerivedCodec, EitherCodec, KeyDispatchCodec, OptionCodec, PrimitiveCodec, RecordCodec, UnitCodec }
+import de.martenschaefer.data.util.DataResult.*
 import de.martenschaefer.data.util.{ DataResult, Lifecycle }
-import de.martenschaefer.data.util.DataResult._
+import cats.*
+import cats.data.*
+import cats.effect.kernel.*
+import cats.syntax.all.*
 import shapeless3.deriving.{ K0, Labelling }
 
 /**
@@ -80,7 +80,7 @@ trait Codec[T] extends AbstractCodec[T, Element, Result, Result] {
      * @param value The object that will be encoded
      * @return Instance of {@code F} that can return the encoded {@code Element}, or a list of errors
      */
-    def encodeElementIO[F[_]: Sync](value: T): F[Result[Element]] = Sync[F].delay(this.encodeElement(value))
+    def encodeElementIO[F[_] : Sync](value: T): F[Result[Element]] = Sync[F].delay(this.encodeElement(value))
 
     /**
      * Creates an instance of {@code F} that decodes an object of type {@code T} from an {@link Element}.
@@ -89,7 +89,7 @@ trait Codec[T] extends AbstractCodec[T, Element, Result, Result] {
      * @param element The {@code Element} that will be decoded
      * @return Instance of {@code F} that can return the decoded object, or a list of errors
      */
-    def decodeElementIO[F[_]: Sync](element: Element): F[Result[T]] = Sync[F].delay(this.decodeElement(element))
+    def decodeElementIO[F[_] : Sync](element: Element): F[Result[T]] = Sync[F].delay(this.decodeElement(element))
 
     /**
      * Encodes an object of type {@code T} to another object using an {@link Encoder}.
@@ -109,7 +109,7 @@ trait Codec[T] extends AbstractCodec[T, Element, Result, Result] {
      * @tparam E Type of the encoded object. Has to be the {@code B} type of the used {@code Encoder}.
      * @return The instance of {@code F} that returns the encoded object
      */
-    def encodeIO[F[_]: Sync, E](value: T)(using Encoder[Element, E]): F[Result[E]] =
+    def encodeIO[F[_] : Sync, E](value: T)(using Encoder[Element, E]): F[Result[E]] =
         this.encodeElementIO(value).map(_.flatMap(Encoder[Element, E].encode(_)))
 
     /**
@@ -133,7 +133,7 @@ trait Codec[T] extends AbstractCodec[T, Element, Result, Result] {
      * @tparam E Type of the object that will be decoded. Has to be the {@code B} type of the used {@code Decoder}.
      * @return The instance of {@code F} that returns the decoded object
      */
-    def decodeIO[F[_]: Sync, E](encoded: E)(using Decoder[Element, E]): F[Result[T]] =
+    def decodeIO[F[_] : Sync, E](encoded: E)(using Decoder[Element, E]): F[Result[T]] =
         Sync[F].delay(this.decode(encoded))
 
     override def encodeValue(value: T): Result[Element] = this.encodeElement(value)
@@ -179,7 +179,7 @@ trait Codec[T] extends AbstractCodec[T, Element, Result, Result] {
         def encodeElement(value: B): Result[Element] =
             from(value).flatMapWithLifecycle((t, l) => self.encodeElement(t).addLifecycle(l))
 
-        override def encodeElementIO[F[_]: Sync](value: B): F[Result[Element]] = for {
+        override def encodeElementIO[F[_] : Sync](value: B): F[Result[Element]] = for {
             resultT <- Sync[F].delay(from(value))
             encoded <- resultT match {
                 case Success(t, l) => self.encodeElementIO(t).map(_.addLifecycle(l))
@@ -190,7 +190,7 @@ trait Codec[T] extends AbstractCodec[T, Element, Result, Result] {
         def decodeElement(element: Element): Result[B] =
             self.decodeElement(element).flatMapWithLifecycle((b, l) => to(b).addLifecycle(l))
 
-        override def decodeElementIO[F[_]: Sync](element: Element): F[Result[B]] = for {
+        override def decodeElementIO[F[_] : Sync](element: Element): F[Result[B]] = for {
             elementResult <- self.decodeElementIO(element)
             resultB <- Sync[F].delay(elementResult.flatMapWithLifecycle((b, l) => to(b).withLifecycle(l)))
         } yield resultB
@@ -212,7 +212,7 @@ trait Codec[T] extends AbstractCodec[T, Element, Result, Result] {
             case result => result
         }
 
-        override def decodeElementIO[F[_]: Sync](element: Element): F[Result[T]] = for {
+        override def decodeElementIO[F[_] : Sync](element: Element): F[Result[T]] = for {
             selfResultT <- self.decodeElementIO(element)
             resultT <- selfResultT match {
                 case Failure(_, l) => Sync[F].delay(Success(alternative, l))
@@ -237,7 +237,7 @@ trait Codec[T] extends AbstractCodec[T, Element, Result, Result] {
             case result => result
         }
 
-        override def decodeElementIO[F[_]: Sync](element: Element): F[Result[T]] = for {
+        override def decodeElementIO[F[_] : Sync](element: Element): F[Result[T]] = for {
             selfResultT <- self.decodeElementIO(element)
             resultT <- selfResultT match {
                 case Failure(_, l) => Sync[F].delay(Success(alternative(), l))
@@ -254,7 +254,7 @@ trait Codec[T] extends AbstractCodec[T, Element, Result, Result] {
      * @param alternative The alternative {@code Codec}
      * @return The created {@code Codec}
      */
-    def flatOrElse(alternative: Codec[T]): Codec[T] = new AlternativeCodec(this, alternative)
+    def flatOrElse(alternative: Codec[T]): Codec[T] = new AlternativeCodec(List(this, alternative))
 
     /**
      * Creates a {@code Codec} for objects that have a type,
@@ -429,7 +429,7 @@ object Codec {
                 def encodeElement(value: B): Result[Element] =
                     codec.encodeElement(from(value))
 
-                override def encodeElementIO[F[_]: Sync](value: B): F[Result[Element]] = for {
+                override def encodeElementIO[F[_] : Sync](value: B): F[Result[Element]] = for {
                     a <- Sync[F].delay(from(value))
                     encoded <- codec.encodeElementIO(a)
                 } yield encoded
@@ -437,7 +437,7 @@ object Codec {
                 def decodeElement(element: Element): Result[B] =
                     codec.decodeElement(element).map(to)
 
-                override def decodeElementIO[F[_]: Sync](element: Element): F[Result[B]] = for {
+                override def decodeElementIO[F[_] : Sync](element: Element): F[Result[B]] = for {
                     decoded <- codec.decodeElementIO(element)
                     decodedB <- Sync[F].delay(decoded.map(to))
                 } yield decodedB
@@ -574,7 +574,8 @@ object Codec {
      * @tparam R Type of the {@code Right} object.
      * @return The {@code Either} codec.
      */
-    def either[L: Codec, R: Codec](errorMessage: String => String): Codec[Either[L, R]] = EitherCodec[L, R](errorMessage)
+    @deprecated
+    def either[L: Codec, R: Codec](errorMessage: String => String): Codec[Either[L, R]] = EitherCodec[L, R]
 
     /**
      * Creates an instance of {@code Codec} for {@link Either}.
@@ -584,8 +585,8 @@ object Codec {
      * @tparam R Type of the {@code Right} object.
      * @return The {@code Either} codec.
      */
-    def either[L: Codec, R: Codec](errorMessage: String): Codec[Either[L, R]] = EitherCodec[L, R](
-        path => path + ": " + errorMessage)
+    @deprecated
+    def either[L: Codec, R: Codec](errorMessage: String): Codec[Either[L, R]] = EitherCodec[L, R]
 
     /**
      * Creates an instance of {@code Codec} for {@link Either}.
@@ -596,18 +597,26 @@ object Codec {
      * @tparam R Type of the {@code Right} object.
      * @return The {@code Either} codec.
      */
-    def either[L: Codec, R: Codec](left: String, right: String): Codec[Either[L, R]] = EitherCodec[L, R](
-        path => s"$path is neither $left nor $right")
+    @deprecated
+    def either[L: Codec, R: Codec](left: String, right: String): Codec[Either[L, R]] = EitherCodec[L, R]
 
     /**
      * Instance of {@code Codec} for {@code Either[L, R]}.
      *
-     * @see The {@code Codec.either} methods
-     * @param error {@code EitherError} object with the error message.
      * @tparam L Type of the {@code Left} object. Has to have a {@code Codec} as well.
      * @tparam R Type of the {@code Right} object. Has to have a {@code Codec} as well.
      */
-    given[L: Codec, R: Codec](using error: EitherError): Codec[Either[L, R]] = EitherCodec[L, R](error.message)
+    given[L: Codec, R: Codec]: Codec[Either[L, R]] = EitherCodec[L, R]
+
+    /**
+     * Constructs a new {@link Codec} that encodes and decodes using the first Codec that doesn't fail.
+     * This is similar to an {@code Either} codec, but it can have more than two alternatives.
+     *
+     * @param codecs the list of Codecs
+     * @tparam T Type of the object.
+     * @return the created {@code Codec}
+     */
+    def alternatives[T](codecs: List[Codec[T]]): Codec[T] = new AlternativeCodec(codecs)
 
     /**
      * Instance of {@code Codec} for {@code List[T}}.
@@ -668,7 +677,7 @@ trait IncompleteFieldCodec[T](val fieldName: String) extends Codec[T] {
             def encodeElement(value: B): Result[Element] =
                 self.encodeElement(from(value)).map(result => ObjectElement(Map(self.fieldName -> result)))
 
-            override def encodeElementIO[F[_]: Sync](value: B): F[Result[Element]] = for {
+            override def encodeElementIO[F[_] : Sync](value: B): F[Result[Element]] = for {
                 encoded <- self.encodeElementIO(from(value))
                 encodedObject <- Sync[F].delay(encoded.map(result => ObjectElement(Map(self.fieldName -> result))))
             } yield encodedObject
@@ -681,7 +690,7 @@ trait IncompleteFieldCodec[T](val fieldName: String) extends Codec[T] {
                 case _ => Failure(List(NotAnObject(element, List.empty)), this.lifecycle)
             }
 
-            override def decodeElementIO[F[_]: Sync](element: Element): F[Result[B]] = element match {
+            override def decodeElementIO[F[_] : Sync](element: Element): F[Result[B]] = element match {
                 case ObjectElement(map) => for {
                     mapElement <- Sync[F].delay(map.get(self.fieldName).getOrElse(return Sync[F].pure(
                         Failure[List[ElementError], B](List(MissingKey(element, List(ElementNode.Name(self.fieldName)))),
