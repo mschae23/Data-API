@@ -24,7 +24,7 @@ class EitherCodec[L: Codec, R: Codec] extends Codec[Either[L, R]] {
         case Failure(errors, l) => Codec[R].decodeElement(element) match {
             case Success(value, l2) => Success(Right(value), l2)
             case Failure(errors2, l2) => Failure(
-                List(AlternativeError(List(errors, errors2), List.empty)), l + l2)
+                List(AlternativeError.of(List(errors, errors2), List.empty)), l + l2)
         }
     }
 
@@ -35,7 +35,7 @@ class EitherCodec[L: Codec, R: Codec] extends Codec[Either[L, R]] {
             case Failure(errors, l) => Codec[R].decodeElementIO(element).map(_ match {
                 case Success(value, l2) => Success(Right(value), l2)
                 case Failure(errors2, l2) => Failure(
-                    List(AlternativeError(List(errors, errors2), List.empty)), l + l2)
+                    List(AlternativeError.of(List(errors, errors2), List.empty)), l + l2)
             })
         }
     } yield result

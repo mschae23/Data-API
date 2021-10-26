@@ -23,7 +23,7 @@ class AlternativeCodec[T](val codecs: List[Codec[T]]) extends Codec[T] {
             }
         }
 
-        Failure(List(AlternativeError(errors.reverse, List.empty)), lifecycle)
+        Failure(List(AlternativeError.of(errors.reverse, List.empty)), lifecycle)
     }
 
     override def encodeElementIO[F[_] : Sync](value: T): F[Result[Element]] = for {
@@ -34,7 +34,7 @@ class AlternativeCodec[T](val codecs: List[Codec[T]]) extends Codec[T] {
 
                 case Failure(errors, l) => (errors :: acc._1, acc._2 + l)
             }))
-    } yield Failure(List(AlternativeError(errors._1.reverse, List.empty)), lifecycle)
+    } yield Failure(List(AlternativeError.of(errors._1.reverse, List.empty)), lifecycle)
 
     override def decodeElement(element: Element): Result[T] = {
         var errors: List[List[ElementError]] = List.empty
@@ -51,7 +51,7 @@ class AlternativeCodec[T](val codecs: List[Codec[T]]) extends Codec[T] {
             }
         }
 
-        Failure(List(AlternativeError(errors.reverse, List.empty)), lifecycle)
+        Failure(List(AlternativeError.of(errors.reverse, List.empty)), lifecycle)
     }
 
     override def decodeElementIO[F[_]: Sync](element: Element): F[Result[T]] = for {
@@ -62,7 +62,7 @@ class AlternativeCodec[T](val codecs: List[Codec[T]]) extends Codec[T] {
 
                 case Failure(errors, l) => (errors :: acc._1, acc._2 + l)
             }))
-    } yield Failure(List(AlternativeError(errors._1.reverse, List.empty)), lifecycle)
+    } yield Failure(List(AlternativeError.of(errors._1.reverse, List.empty)), lifecycle)
 
     override val lifecycle: Lifecycle =
         this.codecs.foldLeft(Lifecycle.Stable)((lifecycle, codec) => lifecycle + codec.lifecycle)

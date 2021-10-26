@@ -42,6 +42,11 @@ trait ElementError(val path: List[ElementNode]) {
      * @return The new element error
      */
     def withPrependedPath(prependedPath: String): ElementError = this.withPrependedPath(ElementNode.Name(prependedPath))
+
+    /**
+     * @return a list of sub errors.
+     */
+    def getSubErrors: List[ElementError] = List.empty
 }
 
 object ElementError {
@@ -111,7 +116,7 @@ enum RecordParseError(val element: Element, override val path: List[ElementNode]
         case NotAString(_, _) => s"$path is not a String"
         case NotAnArray(_, _) => s"$path is not an array"
         case NotAnObject(_, _) => s"$path is not an object"
-        case MissingKey(_, _) => s"Missing key \"${this.path(this.path.size - 1).toString.tail}\" in "
+        case MissingKey(_, _) => s"Missing key \"${this.path.last.toString.tail}\" in "
             + (if (this.path.size < 2) "root node" else this.path.dropRight(1).mkString("", "", "").tail)
         case ValidationParseError(msg, _, _) => msg(path)
         case EitherParseError(msg, _, _) => msg(path)
@@ -135,13 +140,32 @@ object EitherError {
     def message(using e: EitherError): String => String = e.message
 }
 
-case class AlternativeError(val errors: List[List[ElementError]],
+case class AlternativeError(val subErrors: List[AlternativeError.AlternativeSubError],
                             override val path: List[ElementNode]) extends ElementError(path) {
+
     override def getDescription(path: String): String =
-        s"$path: Multiple alternatives failed: " + this.errors.map(_.map(_.getDescription))
+        s"$path: Multiple alternatives failed:"
 
     override def mapPath(f: List[ElementNode] => List[ElementNode]): ElementError =
-        AlternativeError(this.errors.map(_.map(_.mapPath(f))), f(this.path))
+        AlternativeError(this.subErrors.map(_.mapPath(f)), f(this.path))
+
+    override def getSubErrors: List[ElementError] = this.subErrors
+}
+
+object AlternativeError {
+    def of(subErrors: List[List[ElementError]], path: List[ElementNode]): AlternativeError = {
+        new AlternativeError(subErrors.zipWithIndex.map((errors, index) => AlternativeError.AlternativeSubError(index + 1, errors)), path)
+    }
+
+    case class AlternativeSubError(val index: Int, val errors: List[ElementError]) extends ElementError(List.empty) {
+        override def getDescription(path: String): String =
+            s"Alternative ${this.index}:"
+
+        override def mapPath(f: List[ElementNode] => List[ElementNode]): AlternativeSubError =
+            AlternativeSubError(this.index, this.errors.map(_.mapPath(f)))
+
+        override def getSubErrors: List[ElementError] = this.errors
+    }
 }
 
 case class NullElementError(override val path: List[ElementNode]) extends ElementError(path) {
