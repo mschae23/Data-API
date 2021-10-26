@@ -143,8 +143,7 @@ object EitherError {
 case class AlternativeError(val subErrors: List[AlternativeError.AlternativeSubError],
                             override val path: List[ElementNode]) extends ElementError(path) {
 
-    override def getDescription(path: String): String =
-        s"$path: Multiple alternatives failed:"
+    override def getDescription(path: String): String = "Multiple alternatives failed:"
 
     override def mapPath(f: List[ElementNode] => List[ElementNode]): ElementError =
         AlternativeError(this.subErrors.map(_.mapPath(f)), f(this.path))
