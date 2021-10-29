@@ -58,7 +58,7 @@ object ElementError {
         if (path.isEmpty) "root node" else path.mkString("", "", "").tail
 }
 
-case class ValidationError(val message: String => String, override val path: List[ElementNode]) extends ElementError(path) {
+case class ValidationError(val message: String => String, override val path: List[ElementNode] = List.empty) extends ElementError(path) {
     override def getDescription(path: String): String = this.message(path)
 
     override def mapPath(f: List[ElementNode] => List[ElementNode]): ElementError =

@@ -32,9 +32,8 @@ enum LangExpression {
         case ObjectLiteral(fields) => fields.mkString("{ ", ", ", " }")
 
         case FunctionCall(functionName: String, args: Option[List[LangExpression]]) =>
-            if (args.isDefined && args.get.length == 2 && !functionName.matches("^[a-zA-Z]*$"))
+            /* if (args.isDefined && args.get.length == 2 && !functionName.matches("^[a-zA-Z]*$"))
                 s"${args.get.head} $functionName ${args.get(1)}"
-            else
-                s"$functionName${args.map(_.mkString("(", ", ", ")"))}"
+            else */ s"$functionName${args.map(_.mkString("(", ", ", ")")).getOrElse("")}"
     }
 }
