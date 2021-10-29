@@ -97,7 +97,7 @@ class LangParser private(private val input: ListBuffer[LangToken],
 
     private def matchesFunction(token: LangToken, name: String): Boolean = {
         token match {
-            case LangToken.FunctionStart(functionName) => name == functionName
+            case LangToken.FunctionName(functionName) => name == functionName
             case _ => false
         }
     }
@@ -115,6 +115,20 @@ class LangParser private(private val input: ListBuffer[LangToken],
 
     def register(name: String, parselet: Parselet): Unit =
         this.register(matchesFunction(_, name), parselet)
+
+    def registerBuiltinParselets(): Unit = {
+        this.registerPrefix(_ == LangToken.ArrayStart, ArrayParselet())
+        this.registerPrefix(_ == LangToken.ObjectStart, ObjectParselet())
+        this.registerPrefix(_ == LangToken.ParenthesesOpen, GroupParselet())
+
+        this.register(":", TupleParselet())
+        this.register(_ == LangToken.ParenthesesOpen, FunctionCallParselet())
+        this.register(".", ObjectSyntaxFunctionCallParselet())
+    }
+
+    def registerDefaultPrimitiveParselet(): Unit = {
+        this.registerPrefix(_ => true, PrimitiveParselet)
+    }
 }
 
 object LangParser {

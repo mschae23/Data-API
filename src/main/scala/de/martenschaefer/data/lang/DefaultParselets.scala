@@ -2,13 +2,13 @@ package de.martenschaefer.data.lang
 
 import scala.collection.immutable.ListMap
 import scala.collection.mutable.ListBuffer
-import de.martenschaefer.data.serialization.{ ElementError, ElementNode }
+import de.martenschaefer.data.serialization.{ ElementError, ElementNode, ValidationError }
 import de.martenschaefer.data.util.Utils
 
 case object PrimitiveParselet extends PrefixParselet {
     override def parse(parser: LangParser, token: LangToken): LangParser.Result = {
         token match {
-            case LangToken.FunctionStart(name) =>
+            case LangToken.FunctionName(name) =>
                 Right(name.toIntOption match {
                     case Some(number) => LangExpression.IntLiteral(number)
                     case None => name.toLongOption match {
@@ -36,7 +36,7 @@ case object PrimitiveParselet extends PrefixParselet {
 case class PrefixOperatorParselet(val precedence: Int = DefaultPrecedence.PREFIX) extends PrefixParselet {
     override def parse(parser: LangParser, token: LangToken): LangParser.Result = {
         token match {
-            case LangToken.FunctionStart(operatorName) =>
+            case LangToken.FunctionName(operatorName) =>
                 val operand = parser.parseExpression(this.precedence) match {
                     case Right(expression) => expression
                     case result: Left[_, _] => return result
@@ -118,22 +118,21 @@ case class ObjectParselet(val precedence: Int = DefaultPrecedence.OBJECT) extend
                 }
 
                 while (token != LangToken.ObjectEnd) {
-                    val key = parser.parseExpression(this.precedence) match {
+                    val expression = parser.parseExpression(this.precedence) match {
                         case Right(expr) => expr
                         case result: Left[_, _] => return result
                     }
 
-                    parser.expect(LangToken.FunctionStart(":")) match {
-                        case Left(errors) => return Left(errors)
-                        case _ =>
-                    }
+                    expression match {
+                        case LangExpression.FunctionCall("tuple", key :: value :: Nil) =>
+                            fields = fields.updated(key, value)
 
-                    val value = parser.parseExpression(this.precedence) match {
-                        case Right(expr) => expr
-                        case result: Left[_, _] => return result
-                    }
+                        case LangExpression.ObjectLiteral(fields2) =>
+                            for ((key, value) <- fields2)
+                                fields = fields.updated(key, value)
 
-                    fields = fields.updated(key, value)
+                        case _ => return Left(List(ValidationError(_ => s"Expected object field, got: $expression")))
+                    }
 
                     val _ = parser.expect(LangToken.FieldEnd)
 
@@ -155,7 +154,7 @@ case class ObjectParselet(val precedence: Int = DefaultPrecedence.OBJECT) extend
 case class BinaryOperatorParselet(override val precedence: Int, val rightAssociative: Boolean = false) extends Parselet {
     override def parse(parser: LangParser, left: LangExpression, token: LangToken): LangParser.Result = {
         token match {
-            case LangToken.FunctionStart(operatorName) =>
+            case LangToken.FunctionName(operatorName) =>
                 val operand = parser.parseExpression(if (this.rightAssociative) this.precedence - 1 else this.precedence) match {
                     case Right(expression) => expression
                     case result: Left[_, _] => return result
@@ -168,10 +167,26 @@ case class BinaryOperatorParselet(override val precedence: Int, val rightAssocia
     }
 }
 
+case class TupleParselet(override val precedence: Int = DefaultPrecedence.TUPLE) extends Parselet {
+    override def parse(parser: LangParser, left: LangExpression, token: LangToken): LangParser.Result = {
+        token match {
+            case LangToken.FunctionName(_) =>
+                val right = parser.parseExpression(this.precedence - 1) match {
+                    case Right(expression) => expression
+                    case result: Left[_, _] => return result
+                }
+
+                Right(LangExpression.FunctionCall("tuple", List(left, right)))
+
+            case _ => Left(List(ParseletOnWrongTokenError(token)))
+        }
+    }
+}
+
 case class PostfixOperatorParselet(override val precedence: Int = DefaultPrecedence.POSTFIX) extends Parselet {
     override def parse(parser: LangParser, left: LangExpression, token: LangToken): LangParser.Result = {
         token match {
-            case LangToken.FunctionStart(operatorName) =>
+            case LangToken.FunctionName(operatorName) =>
                 Right(LangExpression.FunctionCall(operatorName, List(left)))
 
             case _ => Left(List(ParseletOnWrongTokenError(token)))
@@ -182,7 +197,7 @@ case class PostfixOperatorParselet(override val precedence: Int = DefaultPrecede
 case class ObjectSyntaxFunctionCallParselet(override val precedence: Int = DefaultPrecedence.FUNCTION_CALL) extends Parselet {
     override def parse(parser: LangParser, left: LangExpression, token: LangToken): LangParser.Result = {
         token match {
-            case LangToken.FunctionStart(".") =>
+            case LangToken.FunctionName(".") =>
                 val functionName = parser.parseExpression(this.precedence) match {
                     case Right(expression) => expression
                     case result: Left[_, _] => return result

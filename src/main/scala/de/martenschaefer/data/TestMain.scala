@@ -17,9 +17,9 @@ object TestMain {
               |{
               |    "test": 3,
               |    "test_2": {
-              |        test_operators: 3 + 5 * 2,
-              |        "test_function": feature(2, 4).apply({})
-              |    }
+              |        "test_operators": 3++ + 5 * 2
+              |        test_function: feature(2, -4).apply({})
+              |    },
               |}""".stripMargin
 
         val tokens = LangLexer.getTokens(testString) match {
@@ -30,17 +30,15 @@ object TestMain {
         println()
 
         val parser = new LangParser(tokens)
+        parser.registerBuiltinParselets()
+
         parser.registerPrefix("-", PrefixOperatorParselet())
-        parser.registerPrefix(_ == LangToken.ArrayStart, ArrayParselet())
-        parser.registerPrefix(_ == LangToken.ObjectStart, ObjectParselet())
-        parser.registerPrefix(_ == LangToken.ParenthesesOpen, GroupParselet())
-        parser.registerPrefix(_ => true, PrimitiveParselet)
         parser.register("+", BinaryOperatorParselet(DefaultPrecedence.SUM))
         parser.register("-", BinaryOperatorParselet(DefaultPrecedence.SUM))
         parser.register("*", BinaryOperatorParselet(DefaultPrecedence.PRODUCT))
         parser.register("/", BinaryOperatorParselet(DefaultPrecedence.PRODUCT))
-        parser.register(_ == LangToken.ParenthesesOpen, FunctionCallParselet())
-        parser.register(".", ObjectSyntaxFunctionCallParselet())
+        parser.register("++", PostfixOperatorParselet())
+        parser.registerDefaultPrimitiveParselet()
 
         val expression: LangExpression = parser.getExpression() match {
             case Right(expr) => expr

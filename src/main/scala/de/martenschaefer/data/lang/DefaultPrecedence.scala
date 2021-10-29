@@ -4,6 +4,7 @@ object DefaultPrecedence {
     val OBJECT = 10
 
     val GROUP = 30
+    val TUPLE = 35
 
     val SUM = 50
     val PRODUCT = 70

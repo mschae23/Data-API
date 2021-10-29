@@ -42,16 +42,24 @@ object LangLexer {
         }
     }
 
-    private val functionStopChars = List('.', ':', ',', '=',
-        '(', ')', '{', '}', '[', ']',
-        '+', '-', '*', '/', '%',
-        '&', '|', '!', '?', '\\', '<', '>', '$', '#', '~')
+    private val functionNamePredicates: List[Char => Boolean] = List(_.isDigit, _.isLetter, c => c == '_' || c.isLetterOrDigit,
+        c => List('+', '-', '*', '/', '%', '&', '|', '!', '?', '\\', '<', '>', '$', '#', '~', ':', '=', '^').contains(c),
+        c => List('.', '=', '<', '>').contains(c))
+
+    private def getCharPredicate(c: Char): Char => Boolean = {
+        for ((predicate, i) <- functionNamePredicates.zipWithIndex) {
+            if (predicate(c))
+                return predicate
+        }
+
+        _ => false
+    }
 
     private def parseFunctionName(input: LexerString, tokens: ListBuffer[LangToken], firstC: Char): Unit = {
         val functionNameBuilder = new StringBuilder()
         functionNameBuilder.append(firstC)
 
-        var continue = !functionStopChars.contains(firstC)
+        var continue = true
         var c = firstC
 
         while (continue) {
@@ -60,9 +68,7 @@ object LangLexer {
                 case _ => continue = false; ' '
             }
 
-            val isFunctionStopChar = functionStopChars.contains(c)
-
-            if (!c.isWhitespace && !isFunctionStopChar) {
+            if (getCharPredicate(c)(firstC)) {
                 functionNameBuilder.append(c)
                 input.next()
             } else {
@@ -70,7 +76,7 @@ object LangLexer {
             }
         }
 
-        tokens.append(LangToken.FunctionStart(functionNameBuilder.toString()))
+        tokens.append(LangToken.FunctionName(functionNameBuilder.toString()))
     }
 
     def parseEscapedString(input: LexerString): Either[List[ElementError], String] = {
