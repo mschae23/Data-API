@@ -15,7 +15,7 @@ enum LangExpression {
     case ArrayLiteral(val values: List[LangExpression])
     case ObjectLiteral(val fields: Map[LangExpression, LangExpression])
 
-    case FunctionCall(val functionName: String, val args: Option[List[LangExpression]])
+    case FunctionCall(val functionName: String, val args: List[LangExpression])
 
     override def toString: String = this match {
         case Null | None => "null"
@@ -31,9 +31,9 @@ enum LangExpression {
         case ArrayLiteral(values) => values.mkString("[", ", ", "]")
         case ObjectLiteral(fields) => fields.mkString("{ ", ", ", " }")
 
-        case FunctionCall(functionName: String, args: Option[List[LangExpression]]) =>
+        case FunctionCall(functionName: String, args: List[LangExpression]) =>
             /* if (args.isDefined && args.get.length == 2 && !functionName.matches("^[a-zA-Z]*$"))
                 s"${args.get.head} $functionName ${args.get(1)}"
-            else */ s"$functionName${args.map(_.mkString("(", ", ", ")")).getOrElse("")}"
+            else */ s"$functionName${args.mkString("(", ", ", ")")}"
     }
 }

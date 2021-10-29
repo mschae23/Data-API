@@ -1,12 +1,16 @@
 package de.martenschaefer.data.lang
 
 object DefaultPrecedence {
-    val SUM = 30
-    val PRODUCT = 50
-    val EXPONENT = 60
+    val OBJECT = 10
 
-    val PREFIX = 100
-    val POSTFIX = 110
+    val GROUP = 30
+
+    val SUM = 50
+    val PRODUCT = 70
+    val EXPONENT = 80
+
+    val PREFIX = 120
+    val POSTFIX = 130
 
     val FUNCTION_CALL = 200
 }

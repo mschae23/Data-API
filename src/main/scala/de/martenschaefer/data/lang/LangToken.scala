@@ -8,5 +8,7 @@ enum LangToken {
     case StringToken(val string: String)
 
     case FunctionStart(val functionName: String)
-    case ParenthesisOpen, ParenthesesClose
+    case ParenthesesOpen, ParenthesesClose
+
+    case EndOfFile
 }

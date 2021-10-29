@@ -22,9 +22,7 @@ object TestMain {
               |    }
               |}""".stripMargin
 
-        val testString2 = "3 + 5 * 2 - 9"
-
-        val tokens = LangLexer.getTokens(testString2) match {
+        val tokens = LangLexer.getTokens(testString) match {
             case Right(tokens) => tokens
             case Left(errors) => println(errors); return
         }
@@ -33,11 +31,16 @@ object TestMain {
 
         val parser = new LangParser(tokens)
         parser.registerPrefix("-", PrefixOperatorParselet())
+        parser.registerPrefix(_ == LangToken.ArrayStart, ArrayParselet())
+        parser.registerPrefix(_ == LangToken.ObjectStart, ObjectParselet())
+        parser.registerPrefix(_ == LangToken.ParenthesesOpen, GroupParselet())
         parser.registerPrefix(_ => true, PrimitiveParselet)
         parser.register("+", BinaryOperatorParselet(DefaultPrecedence.SUM))
         parser.register("-", BinaryOperatorParselet(DefaultPrecedence.SUM))
         parser.register("*", BinaryOperatorParselet(DefaultPrecedence.PRODUCT))
         parser.register("/", BinaryOperatorParselet(DefaultPrecedence.PRODUCT))
+        parser.register(_ == LangToken.ParenthesesOpen, FunctionCallParselet())
+        parser.register(".", ObjectSyntaxFunctionCallParselet())
 
         val expression: LangExpression = parser.getExpression() match {
             case Right(expr) => expr

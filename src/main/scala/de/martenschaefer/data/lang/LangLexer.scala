@@ -172,7 +172,7 @@ object LangLexer {
                     tokens.append(LangToken.ArrayEnd)
 
                 case '(' => structures.prepend(StructureType.Parentheses)
-                    tokens.append(LangToken.ParenthesisOpen)
+                    tokens.append(LangToken.ParenthesesOpen)
                 case ')' =>
                     if (!structures.headOption.contains(StructureType.Parentheses))
                         return Left(List(ValidationError(_ =>

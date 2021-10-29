@@ -3,7 +3,7 @@ package de.martenschaefer.data.lang
 import scala.collection.immutable.ListMap
 import scala.collection.mutable.ListBuffer
 import de.martenschaefer.data.lang.LangParser.*
-import de.martenschaefer.data.serialization.{ ElementError, ValidationError }
+import de.martenschaefer.data.serialization.{ ElementError, ElementNode }
 
 class LangParser private(private val input: ListBuffer[LangToken],
                          private var prefixParselets: ListMap[LangToken => Boolean, PrefixParselet],
@@ -22,23 +22,25 @@ class LangParser private(private val input: ListBuffer[LangToken],
     def peek: Option[LangToken] = this.input.headOption
 
     def expect(token: LangToken): Either[List[ElementError], Unit] = {
-        val option = this.next()
+        val option = this.peek
 
-        if (option.contains(token)) Right(())
-        else Left(List(ValidationError(
-            _ => s"Expected '$token', got: ${option.getOrElse("EOF")}'", List.empty)))
+        if (option.contains(token)) {
+            this.next()
+            Right(())
+        } else
+            Left(List(UnexpectedTokenError(token, option.getOrElse(LangToken.EndOfFile))))
     }
 
     def matches(token: LangToken): Boolean =
         this.peek.contains(token)
 
-    private def parsePrefix(token: LangToken): Option[LangExpression] = {
+    private def parsePrefix(token: LangToken): Result = {
         for ((predicate, parselet) <- this.prefixParselets) {
             if (predicate(token))
                 return parselet.parse(this, token)
         }
 
-        None
+        Left(List(UnresolvedTokenError(token)))
     }
 
     private def getParselet(token: LangToken): Option[Parselet] = {
@@ -49,13 +51,13 @@ class LangParser private(private val input: ListBuffer[LangToken],
         None
     }
 
-    private def parse(left: LangExpression, token: LangToken): Option[LangExpression] = {
+    private def parse(left: LangExpression, token: LangToken): Result = {
         for ((predicate, parselet) <- this.parselets) {
             if (predicate(token))
                 return parselet.parse(this, left, token)
         }
 
-        None
+        Left(List(UnresolvedTokenError(token)))
     }
 
     private def getPrecedence: Int = {
@@ -65,29 +67,30 @@ class LangParser private(private val input: ListBuffer[LangToken],
     def parseExpression(precedence: Int): Result = {
         var token = this.next() match {
             case Some(token) => token
-            case None => return Left(List(ValidationError(_ => "Unexpected EOF")))
+            case None => return Left(List(UnexpectedEofError()))
         }
 
         var left: LangExpression = this.parsePrefix(token) match {
-            case Some(expr) => expr
-            case None => return Left(List(ValidationError(_ => s"Token $token could not get resolved")))
+            case Right(expr) => expr
+            case result: Left[_, _] => return result
         }
 
         while (precedence < getPrecedence) {
             token = this.next() match {
                 case Some(t) => t
-                case None => println(s"Done: $left"); return Right(left)
+                case None => return Right(left)
             }
 
             left = this.parse(left, token) match {
-                case Some(expr) => expr
-                case None => return Left(List(ValidationError(_ => s"Token $token could not get resolved")))
+                case Right(expr) => expr
+                case result: Left[_, _] => return result
             }
         }
 
         Right(left)
     }
 
+    //noinspection AccessorLikeMethodIsEmptyParen
     def getExpression(): Result = {
         this.parseExpression(-1)
     }
@@ -116,4 +119,28 @@ class LangParser private(private val input: ListBuffer[LangToken],
 
 object LangParser {
     type Result = Either[List[ElementError], LangExpression]
+
+    case class UnresolvedTokenError(token: LangToken, override val path: List[ElementNode] = List.empty) extends ElementError(path) {
+        override def getDescription(path: String): String =
+            s"Unresolved token ${this.token}"
+
+        override def mapPath(f: List[ElementNode] => List[ElementNode]): ElementError =
+            UnresolvedTokenError(this.token, f(this.path))
+    }
+
+    case class UnexpectedTokenError(expected: LangToken, got: LangToken, override val path: List[ElementNode] = List.empty) extends ElementError(path) {
+        override def getDescription(path: String): String =
+            s"Unexpected token: expected ${this.expected}, got ${this.got}"
+
+        override def mapPath(f: List[ElementNode] => List[ElementNode]): ElementError =
+            UnexpectedTokenError(this.expected, this.got, f(this.path))
+    }
+
+    case class UnexpectedEofError(override val path: List[ElementNode] = List.empty) extends ElementError(path) {
+        override def getDescription(path: String): String =
+            "Unexpected EOF"
+
+        override def mapPath(f: List[ElementNode] => List[ElementNode]): ElementError =
+            UnexpectedEofError(f(this.path))
+    }
 }
