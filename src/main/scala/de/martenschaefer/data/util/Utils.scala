@@ -32,3 +32,10 @@ object Utils {
     def toSnakeCase(string: String): String =
         string.flatMap(c => if (c.isUpper || c.isDigit) s"_${c.toLower}" else c.toString).dropWhile(_ == '_')
 }
+
+extension[T] (self: T) {
+    def printlnDebug(): T = {
+        println(s"[debug] $self")
+        self
+    }
+}

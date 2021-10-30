@@ -116,12 +116,15 @@ class LangParser private(private val input: ListBuffer[LangToken],
     def register(name: String, parselet: Parselet): Unit =
         this.register(matchesFunction(_, name), parselet)
 
-    def registerBuiltinParselets(): Unit = {
+    def registerObjectParselets(): Unit = {
         this.registerPrefix(_ == LangToken.ArrayStart, ArrayParselet())
         this.registerPrefix(_ == LangToken.ObjectStart, ObjectParselet())
         this.registerPrefix(_ == LangToken.ParenthesesOpen, GroupParselet())
 
         this.register(":", TupleParselet())
+    }
+
+    def registerFunctionParselets(): Unit = {
         this.register(_ == LangToken.ParenthesesOpen, FunctionCallParselet())
         this.register(".", ObjectSyntaxFunctionCallParselet())
     }

@@ -42,7 +42,7 @@ case class PrefixOperatorParselet(val precedence: Int = DefaultPrecedence.PREFIX
                     case result: Left[_, _] => return result
                 }
 
-                Right(LangExpression.FunctionCall(operatorName, List(operand)))
+                Right(LangExpression.FunctionCall(LangExpression.SymbolExpression(operatorName), List(operand)))
 
             case _ => Left(List(ParseletOnWrongTokenError(token)))
         }
@@ -124,7 +124,7 @@ case class ObjectParselet(val precedence: Int = DefaultPrecedence.OBJECT) extend
                     }
 
                     expression match {
-                        case LangExpression.FunctionCall("tuple", key :: value :: Nil) =>
+                        case LangExpression.FunctionCall(LangExpression.SymbolExpression("tuple"), key :: value :: Nil) =>
                             fields = fields.updated(key, value)
 
                         case LangExpression.ObjectLiteral(fields2) =>
@@ -160,7 +160,7 @@ case class BinaryOperatorParselet(override val precedence: Int, val rightAssocia
                     case result: Left[_, _] => return result
                 }
 
-                Right(LangExpression.FunctionCall(operatorName, List(left, operand)))
+                Right(LangExpression.FunctionCall(LangExpression.SymbolExpression(operatorName), List(left, operand)))
 
             case _ => Left(List(ParseletOnWrongTokenError(token)))
         }
@@ -176,7 +176,7 @@ case class TupleParselet(override val precedence: Int = DefaultPrecedence.TUPLE)
                     case result: Left[_, _] => return result
                 }
 
-                Right(LangExpression.FunctionCall("tuple", List(left, right)))
+                Right(LangExpression.FunctionCall(LangExpression.SymbolExpression("tuple"), List(left, right)))
 
             case _ => Left(List(ParseletOnWrongTokenError(token)))
         }
@@ -187,7 +187,7 @@ case class PostfixOperatorParselet(override val precedence: Int = DefaultPrecede
     override def parse(parser: LangParser, left: LangExpression, token: LangToken): LangParser.Result = {
         token match {
             case LangToken.FunctionName(operatorName) =>
-                Right(LangExpression.FunctionCall(operatorName, List(left)))
+                Right(LangExpression.FunctionCall(LangExpression.SymbolExpression(operatorName), List(left)))
 
             case _ => Left(List(ParseletOnWrongTokenError(token)))
         }
@@ -214,7 +214,7 @@ case class ObjectSyntaxFunctionCallParselet(override val precedence: Int = Defau
                     case result: Left[_, _] => return result
                 }
 
-                Right(LangExpression.FunctionCall(functionCall.functionName, left :: functionCall.args))
+                Right(LangExpression.FunctionCall(functionCall.function, left :: functionCall.args))
 
             case _ => Left(List(ParseletOnWrongTokenError(token)))
         }
@@ -223,40 +223,36 @@ case class ObjectSyntaxFunctionCallParselet(override val precedence: Int = Defau
 
 case class FunctionCallParselet(override val precedence: Int = DefaultPrecedence.FUNCTION_CALL) extends Parselet {
     override def parse(parser: LangParser, left: LangExpression, token: LangToken): LangParser.Result = {
-        left match {
-            case LangExpression.SymbolExpression(name) => token match {
-                case LangToken.ParenthesesOpen =>
-                    val args = new ListBuffer[LangExpression]()
+        token match {
+            case LangToken.ParenthesesOpen =>
+                val args = new ListBuffer[LangExpression]()
 
-                    var token = parser.peek match {
+                var token = parser.peek match {
+                    case Some(t) => t
+                    case None => return Left(List(LangParser.UnexpectedEofError()))
+                }
+
+                while (token != LangToken.ParenthesesClose) {
+                    val expression = parser.parseExpression(this.precedence) match {
+                        case Right(expr) => expr
+                        case result: Left[_, _] => return result
+                    }
+
+                    args.addOne(expression)
+
+                    val _ = parser.expect(LangToken.FieldEnd)
+
+                    token = parser.peek match {
                         case Some(t) => t
                         case None => return Left(List(LangParser.UnexpectedEofError()))
                     }
+                }
 
-                    while (token != LangToken.ParenthesesClose) {
-                        val expression = parser.parseExpression(this.precedence) match {
-                            case Right(expr) => expr
-                            case result: Left[_, _] => return result
-                        }
+                parser.next()
 
-                        args.addOne(expression)
+                Right(LangExpression.FunctionCall(left, args.toList))
 
-                        val _ = parser.expect(LangToken.FieldEnd)
-
-                        token = parser.peek match {
-                            case Some(t) => t
-                            case None => return Left(List(LangParser.UnexpectedEofError()))
-                        }
-                    }
-
-                    parser.next()
-
-                    Right(LangExpression.FunctionCall(name, args.toList))
-
-                case _ => Left(List(ParseletOnWrongTokenError(token)))
-            }
-
-            case _ => Left(List(ExpectedSymbolError(left.toString)))
+            case _ => Left(List(ParseletOnWrongTokenError(token)))
         }
     }
 }
