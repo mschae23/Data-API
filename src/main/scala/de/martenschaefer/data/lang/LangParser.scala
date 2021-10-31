@@ -129,6 +129,16 @@ class LangParser private(private val input: ListBuffer[LangToken],
         this.register(".", ObjectSyntaxFunctionCallParselet())
     }
 
+    def registerSimpleMathParselets(): Unit = {
+        this.registerPrefix("-", PrefixOperatorParselet())
+        this.registerPrefix("+", PrefixOperatorParselet())
+
+        this.register("+", BinaryOperatorParselet(DefaultPrecedence.SUM))
+        this.register("-", BinaryOperatorParselet(DefaultPrecedence.SUM))
+        this.register("*", BinaryOperatorParselet(DefaultPrecedence.PRODUCT))
+        this.register("/", BinaryOperatorParselet(DefaultPrecedence.PRODUCT))
+    }
+
     def registerDefaultPrimitiveParselet(): Unit = {
         this.registerPrefix(_ => true, PrimitiveParselet)
     }

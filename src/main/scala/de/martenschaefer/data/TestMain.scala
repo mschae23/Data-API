@@ -34,12 +34,8 @@ object TestMain {
         val parser = new LangParser(tokens)
         parser.registerObjectParselets()
         parser.registerFunctionParselets()
+        parser.registerSimpleMathParselets()
 
-        parser.registerPrefix("-", PrefixOperatorParselet())
-        parser.register("+", BinaryOperatorParselet(DefaultPrecedence.SUM))
-        parser.register("-", BinaryOperatorParselet(DefaultPrecedence.SUM))
-        parser.register("*", BinaryOperatorParselet(DefaultPrecedence.PRODUCT))
-        parser.register("/", BinaryOperatorParselet(DefaultPrecedence.PRODUCT))
         parser.register("++", PostfixOperatorParselet())
         parser.registerDefaultPrimitiveParselet()
 
@@ -53,22 +49,23 @@ object TestMain {
         println(expression)
         println()
 
-        val processor = new ExpressionProcessor(expression)
+        val processor = new ExpressionProcessor()
         processor.registerPostProcessor { expression =>
             expression match {
                 case FunctionCall(function, IntLiteral(arg1) :: IntLiteral(arg2) :: Nil) => {
-                    println(s"Infix function $function with args: $arg1, $arg2")
                     function match {
                         case LangExpression.SymbolExpression("+") => Writer.value(IntLiteral(arg1 + arg2))
                         case LangExpression.SymbolExpression("-") => Writer.value(IntLiteral(arg1 - arg2))
                         case LangExpression.SymbolExpression("*") => Writer.value(IntLiteral(arg1 * arg2))
                         case LangExpression.SymbolExpression("/") => Writer.value(IntLiteral(arg1 / arg2))
-                        case _ => Writer(List(ValidationError(_ => s"Infix function $function not resolved")), expression)
+                        case _ => Writer(List(ValidationError(_ => s"Function $function not resolved")), expression)
                     }
                 }
 
                 case FunctionCall(function, IntLiteral(arg) :: Nil) => function match {
                     case LangExpression.SymbolExpression("-") => Writer.value(IntLiteral(-arg))
+                    case LangExpression.SymbolExpression("+") => Writer.value(IntLiteral(arg))
+                    case LangExpression.SymbolExpression("++") => Writer.value(IntLiteral(arg + 1))
                     case _ => Writer.value(expression)
                 }
 
@@ -76,7 +73,7 @@ object TestMain {
             }
         }
 
-        val processedExpression = processor.process()
-        println(processedExpression)
+        val processedExpression = processor.process(expression)
+        println(processedExpression.value)
     }
 }

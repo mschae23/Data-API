@@ -8,105 +8,77 @@ import de.martenschaefer.data.lang.ExpressionProcessor.*
 import de.martenschaefer.data.serialization.ElementError
 import de.martenschaefer.data.util.*
 
-class ExpressionProcessor private(private val expression: LangExpression,
-                                  private val stack: Stack[LangExpression], // mutable
-                                  private var processors: List[LangExpression => Result],
+class ExpressionProcessor private(private var processors: List[LangExpression => Result],
                                   private var postProcessors: List[LangExpression => Result]) {
-    def this(expression: LangExpression) =
-        this(expression, new Stack(), List.empty, List.empty)
+    def this() =
+        this(List.empty, List.empty)
 
     private def applyProcessors(expression: LangExpression, processors: List[LangExpression => Result]): Result = {
         var result: Result = Writer(List.empty, expression)
+        var previous: LangExpression = null
 
-        for (processor <- processors)
-            result = result.flatMap(processor)
+        while (result.value != previous) {
+            previous = result.value
+
+            for (processor <- processors)
+                result = result.flatMap(processor)
+        }
 
         result
     }
 
-    def processRecursive(): Result = {
-        val expression = this.stack.headOption.getOrElse(return Writer(List.empty, this.expression))
+    def process(expression: LangExpression): Result = {
+        val preProcessedExpression = this.applyProcessors(expression, this.processors)
+        var warnings = List.empty[ElementError]
 
-        val resultExpression: Result = expression match {
+        val resultExpression: Result = preProcessedExpression.value match {
             case LangExpression.ArrayLiteral(values) =>
-                var result = this.applyProcessors(expression, this.processors)
+                var resultValues = List.empty[LangExpression]
 
-                if (result.value != expression) {
-                    this.stack.push(result.value)
-                    this.processRecursive()
-                } else {
-                    var resultValues = List.empty[LangExpression]
-
-                    for (value <- values.reverse) {
-                        this.stack.push(value)
-                        val valueResult = this.processRecursive()
-                        result = result.flatMap(_ => valueResult)
-                        resultValues ::= valueResult.value
-                    }
-
-                    val resultArray = LangExpression.ArrayLiteral(resultValues)
-                    result.flatMap(_ => this.applyProcessors(resultArray, this.postProcessors))
+                for (value <- values.reverse) {
+                    val valueResult = this.process(value)
+                    warnings :::= valueResult.written
+                    resultValues ::= valueResult.value
                 }
+
+                val resultArray = LangExpression.ArrayLiteral(resultValues)
+                Writer(warnings.reverse, resultArray).flatMap(this.applyProcessors(_, this.postProcessors))
 
             case LangExpression.ObjectLiteral(fields) =>
-                var result = this.applyProcessors(expression, this.processors)
+                var resultFields = ListMap.empty[LangExpression, LangExpression]
 
-                if (result.value != expression) {
-                    this.stack.push(result.value)
-                    this.processRecursive()
-                } else {
-                    var resultFields = ListMap.empty[LangExpression, LangExpression]
+                for ((key, value) <- fields) {
+                    val keyResult = this.process(key)
+                    warnings :::= keyResult.written
+                    val valueResult = this.process(value)
+                    warnings :::= valueResult.written
 
-                    for ((key, value) <- fields.toList.reverse) {
-                        this.stack.push(key)
-                        val keyResult = this.processRecursive()
-                        result = result.flatMap(_ => keyResult)
-                        this.stack.push(value)
-                        val valueResult = this.processRecursive()
-                        result = result.flatMap(_ => valueResult)
-
-                        resultFields = resultFields.updated(keyResult.value, valueResult.value)
-                    }
-
-                    val resultObject = LangExpression.ObjectLiteral(resultFields)
-                    result.flatMap(_ => this.applyProcessors(resultObject, this.postProcessors))
+                    resultFields = resultFields.updated(keyResult.value, valueResult.value)
                 }
+
+                val resultObject = LangExpression.ObjectLiteral(resultFields)
+                Writer(warnings.reverse, resultObject).flatMap(this.applyProcessors(_, this.postProcessors))
 
             case LangExpression.FunctionCall(function, args) =>
-                var result = this.applyProcessors(expression, this.processors)
+                val functionResult = this.process(function)
+                warnings :::= functionResult.written
 
-                if (result.value != expression) {
-                    this.stack.push(result.value)
-                    this.processRecursive()
-                } else {
-                    this.stack.push(function)
-                    val functionResult = this.processRecursive()
-                    result = result.flatMap(_ => functionResult)
+                var resultArgs = List.empty[LangExpression]
 
-                    var resultArgs = List.empty[LangExpression]
-
-                    for (arg <- args.reverse) {
-                        this.stack.push(arg)
-                        val argResult = this.processRecursive()
-                        result = result.flatMap(_ => argResult)
-                        resultArgs ::= argResult.value
-                    }
-
-                    val resultFunction = LangExpression.FunctionCall(functionResult.value, args)
-                    result.flatMap(_ => this.applyProcessors(resultFunction, this.postProcessors))
+                for (arg <- args.reverse) {
+                    val argResult = this.process(arg)
+                    warnings :::= argResult.written
+                    resultArgs ::= argResult.value
                 }
 
-            case _ => this.applyProcessors(expression, this.processors)
+                val resultFunction = LangExpression.FunctionCall(functionResult.value, resultArgs)
+                Writer(warnings.reverse, resultFunction).flatMap(this.applyProcessors(_, this.postProcessors))
+
+            case _ => preProcessedExpression.flatMap(this.applyProcessors(_, this.processors))
                 .flatMap(this.applyProcessors(_, this.postProcessors))
         }
 
-        this.stack.pop()
-        resultExpression
-    }
-
-    def process(): Result = {
-        this.stack.push(this.expression)
-        this.processRecursive()
+        preProcessedExpression.flatMap(_ => resultExpression)
     }
 
     def registerProcessor(processor: LangExpression => Result): Unit = {
