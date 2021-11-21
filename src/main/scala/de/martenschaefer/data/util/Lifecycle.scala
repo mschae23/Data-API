@@ -32,20 +32,20 @@ object Lifecycle {
 
     given Codec[Lifecycle.Deprecated] = Codec[Version].fieldOf("deprecated_since").xmap[Lifecycle.Deprecated](Lifecycle.Deprecated(_))(_.since)
 
-    private val deprecatedCodec: Codec[Lifecycle] = Codec[Lifecycle.Deprecated].flatXmap(Success(_))(_ match {
+    private val deprecatedCodec: Codec[Lifecycle] = Codec[Lifecycle.Deprecated].flatXmap(Success(_)) {
         case deprecated: Lifecycle.Deprecated => Success(deprecated)
         case _ => Failure(List(ValidationError(path => s"$path: Lifecycle is not deprecated", List.empty)))
-    })
+    }
 
-    private val stableOrExperimentalCodec: Codec[Lifecycle] = Codec[String].flatXmap(name => name match {
+    private val stableOrExperimentalCodec: Codec[Lifecycle] = Codec[String].flatXmap {
         case "stable" => Success(Lifecycle.Stable)
         case "experimental" => Success(Lifecycle.Experimental)
-        case _ => Failure(List(ValidationError(path => s"$path: \"$name\" is neither \"stable\" nor \" experimental\"", List.empty)))
-    })(_ match {
+        case name => Failure(List(ValidationError(path => s"$path: \"$name\" is neither \"stable\" nor \" experimental\"", List.empty)))
+    } {
         case Lifecycle.Stable => Success("stable")
         case Lifecycle.Experimental => Success("experimental")
         case _ => Failure(List(ValidationError(path => s"$path: Lifecycle is not stable or experimental", List.empty)))
-    })
+    }
 
     given Codec[Lifecycle] = Codec.alternatives(List(stableOrExperimentalCodec, deprecatedCodec))
 }

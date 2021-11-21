@@ -96,6 +96,10 @@ class LifecycleTest extends AnyFreeSpec {
             assertResult(Deprecated(2))(
                 Deprecated(2) +
                     Deprecated(Version.Semver(2, 3, 0, List("alpha", "2"))))
+
+            assertResult(Deprecated(2))(
+                Deprecated(Version.Semver(2, 0, 0)) +
+                    Deprecated(Version.Semver(3, 0, 0, List("alpha", "2"))))
         }
     }
 }
