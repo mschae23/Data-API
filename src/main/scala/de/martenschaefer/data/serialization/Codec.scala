@@ -7,7 +7,7 @@ import de.martenschaefer.data.serialization.Element.*
 import de.martenschaefer.data.serialization.RecordParseError.*
 import de.martenschaefer.data.serialization.codec.{ AlternativeCodec, ArrayCodec, DerivedCodec, EitherCodec, KeyDispatchCodec, OptionCodec, PrimitiveCodec, RecordCodec, UnitCodec }
 import de.martenschaefer.data.util.DataResult.*
-import de.martenschaefer.data.util.{ DataResult, Lifecycle }
+import de.martenschaefer.data.util.{ DataResult, Lifecycle, Version }
 import cats.*
 import cats.data.*
 import cats.effect.kernel.*
@@ -404,6 +404,16 @@ trait Codec[T] extends AbstractCodec[T, Element, Result, Result] {
 
     /**
      * Creates a new {@code Codec} that is the same as {@code this},
+     * but has {@code Internal} as its {@link Lifecycle}.
+     * This should be used for {@code Codec}s that are implementation details
+     * and are intended to be used internally only.
+     *
+     * @return The new {@code Codec}.
+     */
+    def internal: Codec[T] = this.withLifecycle(Lifecycle.Internal)
+
+    /**
+     * Creates a new {@code Codec} that is the same as {@code this},
      * but has {@code Experimental} as its {@link Lifecycle}.
      *
      * @return The new {@code Codec}.
@@ -414,10 +424,32 @@ trait Codec[T] extends AbstractCodec[T, Element, Result, Result] {
      * Creates a new {@code Codec} that is the same as {@code this},
      * but has {@code Deprecated} as its {@link Lifecycle}.
      *
-     * @param since Since when this has been deprecated.
+     * @param since Since which version this has been deprecated.
      * @return The new {@code Codec}.
      */
-    def deprecated(since: Int): Codec[T] = this.withLifecycle(Lifecycle.Deprecated(since))
+    def deprecated(since: Version): Codec[T] = this.withLifecycle(Lifecycle.Deprecated(since))
+
+    /**
+     * Creates a new {@code Codec} that is the same as {@code this},
+     * but has {@code Deprecated} as its {@link Lifecycle}.
+     *
+     * @param since Since which version this has been deprecated.
+     * @return The new {@code Codec}.
+     */
+    def deprecated(since: Int): Codec[T] = this.deprecated(Version.Simple(since))
+
+    /**
+     * Creates a new {@code Codec} that is the same as {@code this},
+     * but has {@code Deprecated} as its {@link Lifecycle}.
+     *
+     * @param major The major component of the version in which this has been deprecated.
+     * @param minor The minor component of the version in which this has been deprecated.
+     * @param patch The patch component of the version in which this has been deprecated.
+     * @param preRelease The pre-release component of the version in which this has been deprecated.
+     * @return The new {@code Codec}.
+     */
+    def deprecated(major: Int, minor: Int, patch: Int, preRelease: List[String] = List.empty): Codec[T] =
+        this.deprecated(Version.Semver(major, minor, patch, preRelease))
 }
 
 object Codec {

@@ -5,8 +5,9 @@ import de.martenschaefer.data.util.DataResult.*
 
 enum Lifecycle {
     case Stable
+    case Internal
     case Experimental
-    case Deprecated(since: Int)
+    case Deprecated(since: Version)
 
     def +(other: Lifecycle): Lifecycle =
         this match {
@@ -16,12 +17,20 @@ enum Lifecycle {
                 && other.asInstanceOf[Lifecycle.Deprecated].since < since => other
             case Lifecycle.Deprecated(_) => this
             case _ if other.isInstanceOf[Lifecycle.Deprecated] => other
+            case Lifecycle.Internal => this
+            case _ if other == Lifecycle.Internal => other
             case _ => Lifecycle.Stable
         }
 }
 
 object Lifecycle {
-    given Codec[Lifecycle.Deprecated] = Codec[Int].fieldOf("deprecated_since").xmap[Lifecycle.Deprecated](Lifecycle.Deprecated(_))(_.since)
+    object Deprecated {
+        def apply(since: Version): Deprecated = new Deprecated(since)
+
+        def apply(since: Int): Deprecated = Deprecated(Version.Simple(since))
+    }
+
+    given Codec[Lifecycle.Deprecated] = Codec[Version].fieldOf("deprecated_since").xmap[Lifecycle.Deprecated](Lifecycle.Deprecated(_))(_.since)
 
     private val deprecatedCodec: Codec[Lifecycle] = Codec[Lifecycle.Deprecated].flatXmap(Success(_))(_ match {
         case deprecated: Lifecycle.Deprecated => Success(deprecated)

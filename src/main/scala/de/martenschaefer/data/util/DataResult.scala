@@ -89,6 +89,14 @@ enum DataResult[+L, +R](val lifecycle: Lifecycle) {
 
     /**
      * Creates a new {@code DataResult} that is the same as {@code this},
+     * but has {@code Internal} as its {@link Lifecycle}.
+     *
+     * @return The new {@code DataResult}.
+     */
+    def internal: DataResult[L, R] = this.withLifecycle(Lifecycle.Internal)
+
+    /**
+     * Creates a new {@code DataResult} that is the same as {@code this},
      * but has {@code Experimental} as its {@link Lifecycle}.
      *
      * @return The new {@code DataResult}.
@@ -99,10 +107,10 @@ enum DataResult[+L, +R](val lifecycle: Lifecycle) {
      * Creates a new {@code DataResult} that is the same as {@code this},
      * but has {@code Deprecated} as its {@link Lifecycle}.
      *
-     * @param since Since when this has been deprecated.
+     * @param since Since which version this has been deprecated.
      * @return The new {@code DataResult}.
      */
-    def deprecated(since: Int): DataResult[L, R] = this.withLifecycle(Lifecycle.Deprecated(since))
+    def deprecated(since: Version): DataResult[L, R] = this.withLifecycle(Lifecycle.Deprecated(since))
 
     /**
      * Creates a new {@code DataResult} that has another {@link Lifecycle} added to to it.
