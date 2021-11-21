@@ -15,12 +15,12 @@ enum DataResult[+L, +R](val lifecycle: Lifecycle) {
     }
 
     def flatMap[L1 >: L, R1](f: R => DataResult[L1, R1]): DataResult[L1, R1] = this match {
-        case Success(value, _) => f(value)
+        case Success(value, l) => f(value).addLifecycle(l)
         case _ => this.asInstanceOf[DataResult[L1, R1]]
     }
 
     def flatMapLeft[R1 >: R, L1](f: L => DataResult[L1, R1]): DataResult[L1, R1] = this match {
-        case Failure(value, _) => f(value)
+        case Failure(value, l) => f(value).addLifecycle(l)
         case _ => this.asInstanceOf[DataResult[L1, R1]]
     }
 
@@ -30,15 +30,17 @@ enum DataResult[+L, +R](val lifecycle: Lifecycle) {
     }
 
     def flatMapBoth[L1, R1](l: L => DataResult[L1, R1])(r: R => DataResult[L1, R1]): DataResult[L1, R1] = this match {
-        case Failure(value, _) => l(value)
-        case Success(value, _) => r(value)
+        case Failure(value, lifecycle) => l(value).addLifecycle(lifecycle)
+        case Success(value, lifecycle) => r(value).addLifecycle(lifecycle)
     }
 
+    @deprecated("Use flatMap", "5.4.0")
     def flatMapWithLifecycle[L1 >: L, R1](f: (R, Lifecycle) => DataResult[L1, R1]): DataResult[L1, R1] = this match {
         case Success(value, l) => f(value, l)
         case _ => this.asInstanceOf[DataResult[L1, R1]]
     }
 
+    @deprecated("Use flatMapLeft", "5.4.0")
     def flatMapLeftWithLifecycle[R1 >: R, L1](f: (L, Lifecycle) => DataResult[L1, R1]): DataResult[L1, R1] = this match {
         case Failure(value, l) => f(value, l)
         case _ => this.asInstanceOf[DataResult[L1, R1]]

@@ -177,7 +177,7 @@ trait Codec[T] extends AbstractCodec[T, Element, Result, Result] {
      */
     def flatXmap[B](to: T => Result[B])(from: B => Result[T]): Codec[B] = new Codec[B] {
         def encodeElement(value: B): Result[Element] =
-            from(value).flatMapWithLifecycle((t, l) => self.encodeElement(t).addLifecycle(l))
+            from(value).flatMap(self.encodeElement)
 
         override def encodeElementIO[F[_] : Sync](value: B): F[Result[Element]] = for {
             resultT <- Sync[F].delay(from(value))
@@ -188,11 +188,11 @@ trait Codec[T] extends AbstractCodec[T, Element, Result, Result] {
         } yield encoded
 
         def decodeElement(element: Element): Result[B] =
-            self.decodeElement(element).flatMapWithLifecycle((b, l) => to(b).addLifecycle(l))
+            self.decodeElement(element).flatMap(to)
 
         override def decodeElementIO[F[_] : Sync](element: Element): F[Result[B]] = for {
             elementResult <- self.decodeElementIO(element)
-            resultB <- Sync[F].delay(elementResult.flatMapWithLifecycle((b, l) => to(b).withLifecycle(l)))
+            resultB <- Sync[F].delay(elementResult.flatMap(to))
         } yield resultB
 
         override val lifecycle: Lifecycle = self.lifecycle
@@ -541,7 +541,7 @@ object Codec {
     /**
      * Instance of {@code Codec} for {@code Int}.
      */
-    given Codec[Int] = new PrimitiveCodec(IntElement(_), _ match {
+    given Codec[Int] = new PrimitiveCodec(IntElement.apply, {
         case IntElement(value) => Success(value)
         case element => Failure(List(NotAnInt(element, List.empty)))
     })
@@ -549,7 +549,7 @@ object Codec {
     /**
      * Instance of {@code Codec} for {@code Long}.
      */
-    given Codec[Long] = new PrimitiveCodec(LongElement(_), _ match {
+    given Codec[Long] = new PrimitiveCodec(LongElement.apply, {
         case IntElement(value) => Success(value.toLong)
         case LongElement(value) => Success(value)
         case element => Failure(List(NotALong(element, List.empty)))
@@ -558,7 +558,7 @@ object Codec {
     /**
      * Instance of {@code Codec} for {@code Float}.
      */
-    given Codec[Float] = new PrimitiveCodec(FloatElement(_), _ match {
+    given Codec[Float] = new PrimitiveCodec(FloatElement.apply, {
         case IntElement(value) => Success(value.toFloat)
         case FloatElement(value) => Success(value)
         case element => Failure(List(NotAFloat(element, List.empty)))
@@ -567,7 +567,7 @@ object Codec {
     /**
      * Instance of {@code Codec} for {@code Double}.
      */
-    given Codec[Double] = new PrimitiveCodec(DoubleElement(_), _ match {
+    given Codec[Double] = new PrimitiveCodec(DoubleElement.apply, {
         case IntElement(value) => Success(value.toDouble)
         case FloatElement(value) => Success(value.toDouble)
         case DoubleElement(value) => Success(value)
@@ -577,7 +577,7 @@ object Codec {
     /**
      * Instance of {@code Codec} for {@code Boolean}.
      */
-    given Codec[Boolean] = new PrimitiveCodec(BooleanElement(_), _ match {
+    given Codec[Boolean] = new PrimitiveCodec(BooleanElement.apply, {
         case BooleanElement(value) => Success(value)
         case element => Failure(List(NotABoolean(element, List.empty)))
     })
@@ -585,7 +585,7 @@ object Codec {
     /**
      * Instance of {@code Codec} for {@code String}.
      */
-    given Codec[String] = new PrimitiveCodec(StringElement(_), _ match {
+    given Codec[String] = new PrimitiveCodec(StringElement.apply, {
         case StringElement(value) => Success(value)
         case element => Failure(List(NotAString(element, List.empty)))
     })
@@ -716,7 +716,7 @@ trait IncompleteFieldCodec[T](val fieldName: String) extends Codec[T] {
 
             def decodeElement(element: Element): Result[B] = element match {
                 case Element.ObjectElement(map) =>
-                    self.decodeElement(map.get(self.fieldName).getOrElse(return Failure(List(MissingKey(element,
+                    self.decodeElement(map.getOrElse(self.fieldName, return Failure(List(MissingKey(element,
                         List(ElementNode.Name(self.fieldName)))), this.lifecycle))).mapBoth(_.map(_.withPrependedPath(self.fieldName)))(to)
 
                 case _ => Failure(List(NotAnObject(element, List.empty)), this.lifecycle)
@@ -724,7 +724,7 @@ trait IncompleteFieldCodec[T](val fieldName: String) extends Codec[T] {
 
             override def decodeElementIO[F[_] : Sync](element: Element): F[Result[B]] = element match {
                 case ObjectElement(map) => for {
-                    mapElement <- Sync[F].delay(map.get(self.fieldName).getOrElse(return Sync[F].pure(
+                    mapElement <- Sync[F].delay(map.getOrElse(self.fieldName, return Sync[F].pure(
                         Failure[List[ElementError], B](List(MissingKey(element, List(ElementNode.Name(self.fieldName)))),
                             this.lifecycle))))
                     decoded <- self.decodeElementIO(mapElement)

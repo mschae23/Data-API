@@ -16,7 +16,7 @@ lazy val root = project
 
             "org.typelevel" %% "shapeless3-deriving" % "3.0.3",
 
-            "com.google.code.gson" % "gson" % "2.8.8",
+            "com.google.code.gson" % "gson" % "2.8.9",
 
             "org.scalactic" %% "scalactic" % "3.2.9",
             "org.scalatest" %% "scalatest" % "3.2.9" % "test"

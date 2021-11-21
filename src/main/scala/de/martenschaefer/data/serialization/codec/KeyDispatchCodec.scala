@@ -42,9 +42,9 @@ class KeyDispatchCodec[K: Codec, V](val typeKey: String = "type",
         }
 
         decodedKey.flatMap(keyElement => Codec[K].decodeElement(keyElement).mapLeft(_.map(_.withPrependedPath(this.typeKey))))
-            .flatMap(key => this.codec(key).decodeElement(element) match {
+            .flatMap(key => Success(this.codec(key)).flatMap(c => Success(c, c.lifecycle)).flatMap[List[ElementError], V](_.decodeElement(element)) match {
                 case Failure(errors, l) => this.codec(key).decodeElement(element match {
-                    case ObjectElement(map) => map.get(this.valueKey).getOrElse(return Failure(errors, this.lifecycle + l))
+                    case ObjectElement(map) => map.getOrElse(this.valueKey, return Failure(errors, this.lifecycle + l))
                     case _ => return Failure(List(RecordParseError.NotAnObject(element, List.empty)), this.lifecycle + l)
                 }).addLifecycle(this.lifecycle).mapLeft(_.map(_.withPrependedPath(this.valueKey)))
 
@@ -56,4 +56,5 @@ class KeyDispatchCodec[K: Codec, V](val typeKey: String = "type",
 object KeyDispatchCodec {
     private def getEncoder[K, V](typeFunction: V => Result[_ <: K], codec: K => Codec[_ <: V], input: V): Result[Codec[V]] =
         typeFunction(input).map(k => codec(k)).map(_.asInstanceOf[Codec[V]])
+            .flatMap(c => Success(c, c.lifecycle))
 }
