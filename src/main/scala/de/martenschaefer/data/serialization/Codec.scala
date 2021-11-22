@@ -672,7 +672,7 @@ object Codec {
      * @tparam T Type of the object.
      * @return the created {@code Codec}
      */
-    def alternativesWithCustomError[T](codecs: (String, Codec[T])*)(getError: List[AlternativeError.AlternativeSubError] => ElementError): Codec[T] =
+    def alternativesWithCustomError[T](codecs: (String, Codec[T])*)(getError: List[AlternativeError.AlternativeSubError] => List[ElementError]): Codec[T] =
         new AlternativeCodec(codecs.toList, getError)
 
     /**
