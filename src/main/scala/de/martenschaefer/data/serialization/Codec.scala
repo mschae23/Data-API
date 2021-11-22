@@ -254,7 +254,7 @@ trait Codec[T] extends AbstractCodec[T, Element, Result, Result] {
      * @param alternative The alternative {@code Codec}
      * @return The created {@code Codec}
      */
-    def flatOrElse(alternative: Codec[T]): Codec[T] = new AlternativeCodec(List(this, alternative))
+    def flatOrElse(alternative: Codec[T]): Codec[T] = new AlternativeCodec(List(("1", this), ("2", alternative)))
 
     /**
      * Creates a {@code Codec} for objects that have a type,
@@ -648,7 +648,32 @@ object Codec {
      * @tparam T Type of the object.
      * @return the created {@code Codec}
      */
-    def alternatives[T](codecs: List[Codec[T]]): Codec[T] = new AlternativeCodec(codecs)
+    def alternatives[T](codecs: List[Codec[T]]): Codec[T] = new AlternativeCodec(codecs.zipWithIndex
+        .map((codec, index) => (index.toString, codec)))
+
+    /**
+     * Constructs a new {@link Codec} that encodes and decodes using the first Codec that doesn't fail.
+     * This is similar to an {@code Either} codec, but it can have more than two alternatives.
+     *
+     * @param codecs the list of Codecs. This is a tuple of a label for that alternative and the {@code Codec} for it
+     * @tparam T Type of the object.
+     * @return the created {@code Codec}
+     */
+    def alternatives[T](codecs: (String, Codec[T])*): Codec[T] = new AlternativeCodec(codecs.toList)
+
+
+    /**
+     * Constructs a new {@link Codec} that encodes and decodes using the first Codec that doesn't fail.
+     * This is similar to an {@code Either} codec, but it can have more than two alternatives.
+     * This overload of {@code alternatives} also allows to define a custom function to create the resulting {@link ElementError}.
+     *
+     * @param codecs the list of Codecs. This is a tuple of a label for that alternative and the {@code Codec} for it
+     * @param getError creates an {@code ElementError} out of a list of sub errors
+     * @tparam T Type of the object.
+     * @return the created {@code Codec}
+     */
+    def alternatives[T](codecs: (String, Codec[T])*)(getError: List[AlternativeError.AlternativeSubError] => ElementError): Codec[T] =
+        new AlternativeCodec(codecs.toList, getError)
 
     /**
      * Instance of {@code Codec} for {@code List[T}}.

@@ -32,11 +32,11 @@ class EitherCodec[L: Codec, R: Codec] extends Codec[Either[L, R]] {
         resultL <- Codec[L].decodeElementIO(element)
         result <- resultL match {
             case Success(value, l) => Sync[F].pure(Success(Left(value), l))
-            case Failure(errors, l) => Codec[R].decodeElementIO(element).map(_ match {
+            case Failure(errors, l) => Codec[R].decodeElementIO(element).map {
                 case Success(value, l2) => Success(Right(value), l2)
                 case Failure(errors2, l2) => Failure(
                     List(AlternativeError.of(List(errors, errors2), List.empty)), l + l2)
-            })
+            }
         }
     } yield result
 

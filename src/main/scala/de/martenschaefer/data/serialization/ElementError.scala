@@ -140,8 +140,8 @@ object EitherError {
     def message(using e: EitherError): String => String = e.message
 }
 
-case class AlternativeError(val subErrors: List[AlternativeError.AlternativeSubError],
-                            override val path: List[ElementNode]) extends ElementError(path) {
+case class AlternativeError(subErrors: List[AlternativeError.AlternativeSubError],
+                            override val path: List[ElementNode] = List.empty) extends ElementError(path) {
 
     override def getDescription(path: String): String = "Multiple alternatives failed:"
 
@@ -153,15 +153,16 @@ case class AlternativeError(val subErrors: List[AlternativeError.AlternativeSubE
 
 object AlternativeError {
     def of(subErrors: List[List[ElementError]], path: List[ElementNode]): AlternativeError = {
-        new AlternativeError(subErrors.zipWithIndex.map((errors, index) => AlternativeError.AlternativeSubError(index + 1, errors)), path)
+        new AlternativeError(subErrors.zipWithIndex.map((errors, index) =>
+            AlternativeError.AlternativeSubError((index + 1).toString, errors)), path)
     }
 
-    case class AlternativeSubError(val index: Int, val errors: List[ElementError]) extends ElementError(List.empty) {
+    case class AlternativeSubError(label: String, errors: List[ElementError], debugOnly: Boolean = false) extends ElementError(List.empty) {
         override def getDescription(path: String): String =
-            s"Alternative ${this.index}:"
+            s"Alternative ${this.label}:"
 
         override def mapPath(f: List[ElementNode] => List[ElementNode]): AlternativeSubError =
-            AlternativeSubError(this.index, this.errors.map(_.mapPath(f)))
+            AlternativeSubError(this.label, this.errors.map(_.mapPath(f)))
 
         override def getSubErrors: List[ElementError] = this.errors
     }
