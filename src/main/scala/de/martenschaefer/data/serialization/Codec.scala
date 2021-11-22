@@ -649,7 +649,7 @@ object Codec {
      * @return the created {@code Codec}
      */
     def alternatives[T](codecs: List[Codec[T]]): Codec[T] = new AlternativeCodec(codecs.zipWithIndex
-        .map((codec, index) => (index.toString, codec)))
+        .map((codec, index) => ((index + 1).toString, codec)))
 
     /**
      * Constructs a new {@link Codec} that encodes and decodes using the first Codec that doesn't fail.
