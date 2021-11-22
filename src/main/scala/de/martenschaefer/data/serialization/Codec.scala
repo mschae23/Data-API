@@ -665,14 +665,14 @@ object Codec {
     /**
      * Constructs a new {@link Codec} that encodes and decodes using the first Codec that doesn't fail.
      * This is similar to an {@code Either} codec, but it can have more than two alternatives.
-     * This overload of {@code alternatives} also allows to define a custom function to create the resulting {@link ElementError}.
+     * This version of {@code alternatives} also allows to define a custom function to create the resulting {@link ElementError}.
      *
      * @param codecs the list of Codecs. This is a tuple of a label for that alternative and the {@code Codec} for it
      * @param getError creates an {@code ElementError} out of a list of sub errors
      * @tparam T Type of the object.
      * @return the created {@code Codec}
      */
-    def alternatives[T](codecs: (String, Codec[T])*)(getError: List[AlternativeError.AlternativeSubError] => ElementError): Codec[T] =
+    def alternativesWithCustomError[T](codecs: (String, Codec[T])*)(getError: List[AlternativeError.AlternativeSubError] => ElementError): Codec[T] =
         new AlternativeCodec(codecs.toList, getError)
 
     /**
