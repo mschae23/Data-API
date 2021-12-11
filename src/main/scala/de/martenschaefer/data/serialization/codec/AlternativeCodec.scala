@@ -8,9 +8,7 @@ import de.martenschaefer.data.util.Lifecycle
 import cats.effect.Sync
 import cats.syntax.all.*
 
-class AlternativeCodec[T](val codecs: List[(String, Codec[T])],
-                          getError: List[AlternativeSubError] => List[ElementError] = subErrors =>
-                              List(AlternativeError(subErrors))) extends Codec[T] {
+class AlternativeCodec[T](val codecs: List[(String, Codec[T])]) extends Codec[T] {
     override def encodeElement(value: T): Result[Element] = {
         var errors: List[AlternativeSubError] = List.empty
         var lifecycle = Lifecycle.Stable
@@ -25,7 +23,7 @@ class AlternativeCodec[T](val codecs: List[(String, Codec[T])],
             }
         }
 
-        Failure(this.getError(errors.reverse), lifecycle)
+        Failure(List(AlternativeError(errors.reverse)), lifecycle)
     }
 
     override def decodeElement(element: Element): Result[T] = {
@@ -42,7 +40,7 @@ class AlternativeCodec[T](val codecs: List[(String, Codec[T])],
             }
         }
 
-        Failure(this.getError(errors.reverse), lifecycle)
+        Failure(List(AlternativeError(errors.reverse)), lifecycle)
     }
 
     override val lifecycle: Lifecycle =

@@ -232,6 +232,8 @@ trait Codec[T] extends AbstractCodec[T, Element, Result, Result] {
     def orElse(alternative: () => T): Codec[T] = new Codec {
         override def encodeElement(value: T): Result[Element] = self.encodeElement(value)
 
+        override def encodeElementIO[F[_] : Sync](value: T): F[Result[Element]] = self.encodeElementIO(value)
+
         override def decodeElement(element: Element): Result[T] = self.decodeElement(element) match {
             case Failure(_, l) => Success(alternative(), l)
             case result => result
@@ -255,6 +257,41 @@ trait Codec[T] extends AbstractCodec[T, Element, Result, Result] {
      * @return The created {@code Codec}
      */
     def flatOrElse(alternative: Codec[T]): Codec[T] = new AlternativeCodec(List(("1", this), ("2", alternative)))
+
+    /**
+     * Creates a new {@link Codec} that is the same as {@code this}, but uses the specified functions
+     * to map the returned errors.
+     *
+     * @param encodeF Function used to map encoding errors
+     * @param decodeF Function used to map decoding errors
+     * @return The created {@code Codec}
+     */
+    def mapErrors(encodeF: List[ElementError] => List[ElementError])(decodeF: List[ElementError] => List[ElementError]): Codec[T] = new Codec[T] {
+        override def encodeElement(value: T): Result[Element] = self.encodeElement(value).mapLeft(encodeF)
+
+        override def encodeElementIO[F[_] : Sync](value: T): F[Result[Element]] = for {
+            encoded <- self.encodeElementIO(value)
+            result <- Sync[F].delay(encoded.mapLeft(encodeF))
+        } yield result
+
+        override def decodeElement(element: Element): Result[T] = self.decodeElement(element).mapLeft(decodeF)
+
+        override def decodeElementIO[F[_] : Sync](element: Element): F[Result[T]] = for {
+            decoded <- self.decodeElementIO(element)
+            result <- Sync[F].delay(decoded.mapLeft(decodeF))
+        } yield result
+
+        override val lifecycle: Lifecycle = self.lifecycle
+    }
+
+    /**
+     * Creates a new {@link Codec} that is the same as {@code this}, but uses the specified function
+     * to map the returned errors (both encoding and decoding errors).
+     *
+     * @param f Function used to map errors
+     * @return The created {@code Codec}
+     */
+    def mapErrors(f: List[ElementError] => List[ElementError]): Codec[T] = this.mapErrors(f)(f)
 
     /**
      * Creates a {@code Codec} for objects that have a type,
@@ -442,9 +479,9 @@ trait Codec[T] extends AbstractCodec[T, Element, Result, Result] {
      * Creates a new {@code Codec} that is the same as {@code this},
      * but has {@code Deprecated} as its {@link Lifecycle}.
      *
-     * @param major The major component of the version in which this has been deprecated.
-     * @param minor The minor component of the version in which this has been deprecated.
-     * @param patch The patch component of the version in which this has been deprecated.
+     * @param major      The major component of the version in which this has been deprecated.
+     * @param minor      The minor component of the version in which this has been deprecated.
+     * @param patch      The patch component of the version in which this has been deprecated.
      * @param preRelease The pre-release component of the version in which this has been deprecated.
      * @return The new {@code Codec}.
      */
@@ -661,19 +698,23 @@ object Codec {
      */
     def alternatives[T](codecs: (String, Codec[T])*): Codec[T] = new AlternativeCodec(codecs.toList)
 
-
     /**
      * Constructs a new {@link Codec} that encodes and decodes using the first Codec that doesn't fail.
      * This is similar to an {@code Either} codec, but it can have more than two alternatives.
      * This version of {@code alternatives} also allows to define a custom function to create the resulting {@link ElementError}.
      *
-     * @param codecs the list of Codecs. This is a tuple of a label for that alternative and the {@code Codec} for it
+     * @deprecated Use {@link Codec#mapErrors} instead.
+     * @param codecs   the list of Codecs. This is a tuple of a label for that alternative and the {@code Codec} for it
      * @param getError creates an {@code ElementError} out of a list of sub errors
      * @tparam T Type of the object.
      * @return the created {@code Codec}
      */
+    @deprecated
     def alternativesWithCustomError[T](codecs: (String, Codec[T])*)(getError: List[AlternativeError.AlternativeSubError] => List[ElementError]): Codec[T] =
-        new AlternativeCodec(codecs.toList, getError)
+        new AlternativeCodec(codecs.toList).mapErrors(errors => errors.head match {
+            case AlternativeError(subErrors, _) => getError(subErrors)
+            case _ => errors
+        })
 
     /**
      * Instance of {@code Codec} for {@code List[T}}.
